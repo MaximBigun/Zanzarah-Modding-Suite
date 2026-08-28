@@ -140,7 +140,7 @@
   function addItem(bytes,item,position,prototype){
     const models=parseModelsV3(bytes), behaviours=parseBehaviours(bytes), scene=parseSceneItems(bytes); if(!models||!behaviours||!scene) throw new Error('В сцене нет Models_v3/Behaviours/Scene');
     const idx=nextModelIdx(models), p=cloneModelPrototype(prototype), fileName=item.model||('itm'+String(item.id).padStart(3,'0'));
-    models.items.push({idx,fileName,position:{x:+position.x,y:+position.y,z:+position.z},rotation:p.rotation,scaleX:p.scaleX,scaleY:p.scaleY,scaleZ:p.scaleZ,color:p.color,i1:p.i1,i15:p.i15,i2:p.i2});
+    models.items.push({idx,fileName,position:{x:+position.x,y:+position.y+1,z:+position.z},rotation:p.rotation,scaleX:p.scaleX,scaleY:p.scaleY,scaleZ:p.scaleZ,color:p.color,i1:p.i1,i15:p.i15,i2:p.i2});
     behaviours.items.push({type:1000,modelId:idx}); scene.items.push({s:'',i1:idx,i2:3});
     return patchItemSections(bytes,models,behaviours,scene);
   }
@@ -152,7 +152,7 @@
     let cursor=0;
     for(let n=0;n<count;n++){
       while(used.has(cursor))cursor++; const idx=cursor++; used.add(idx);
-      models.items.push({idx,fileName,position:{x:+position.x,y:+position.y,z:+position.z},rotation:{...p.rotation},scaleX:p.scaleX,scaleY:p.scaleY,scaleZ:p.scaleZ,color:Uint8Array.from(p.color),i1:p.i1,i15:p.i15,i2:p.i2});
+      models.items.push({idx,fileName,position:{x:+position.x,y:+position.y+1,z:+position.z},rotation:{...p.rotation},scaleX:p.scaleX,scaleY:p.scaleY,scaleZ:p.scaleZ,color:Uint8Array.from(p.color),i1:p.i1,i15:p.i15,i2:p.i2});
       behaviours.items.push({type:1000,modelId:idx}); scene.items.push({s:'',i1:idx,i2:3});
     }
     return patchItemSections(bytes,models,behaviours,scene);
@@ -263,21 +263,21 @@
     throw new Error('Закончился диапазон UID для Custom Shadow Elf');
   }
   function createCustomShadowElf(db,team){
-    const base=db.entries.find(e=>internalName(e)==='_ShadowElf');
-    if(!base)throw new Error('В _fb0x05.fbs не найден оригинальный _ShadowElf');
+    // Gameplay test v0.8.5 показал, что клон специального _ShadowElf без его U/n-логики
+    // спавнится как выбранная W-фея, а не как world-модель тёмного эльфа.
+    // Поэтому используем подтверждённый обычный shadow-elf NPC ns322a как визуальный/actor template.
+    const base=db.entries.find(e=>internalName(e)==='ns322a');
+    if(!base)throw new Error('В _fb0x05.fbs не найден шаблон Shadow Elf ns322a');
     const entry=cloneDbEntry(base), name=nextCustomShadowName(db), uid=nextCustomShadowUid(db);
     entry.uid=uid;
     const nameField=fieldByColumn(entry,19);
-    if(!nameField||nameField.type!==0)throw new Error('У _ShadowElf не найдено внутреннее имя (column 19)');
+    if(!nameField||nameField.type!==0)throw new Error('У шаблона ns322a не найдено внутреннее имя (column 19)');
     nameField._modifiedString=name;
-    // Ключевое отличие от оригинального _ShadowElf: удаляем динамические U/n-блоки
-    // из Script2 и превращаем запись в обычного NPC с фиксированной W-командой.
-    const script2=fieldByColumn(entry,25);
-    if(!script2||script2.type!==0)throw new Error('У _ShadowElf не найден Script2 (column 25)');
-    script2._modifiedString='C.u002s02m\n';
+    // ns322a уже имеет обычную C.u002s02m + W-команду и корректный набор actor scripts.
+    // Меняем только W-команду; неизвестные поля/скрипты шаблона сохраняем дословно.
     setTeam(entry,team||[]);
     db.entries.push(entry);
-    return {index:db.entries.length-1,uid,name,team:teamFromEntry(entry),entry,isCustomShadowElf:true};
+    return {index:db.entries.length-1,uid,name,team:teamFromEntry(entry),entry,isCustomShadowElf:true,template:'ns322a'};
   }
 
   function buildNpcCatalog(db){ return db.entries.map((entry,index)=>{const name=internalName(entry);return {index,uid:entry.uid>>>0,name,team:teamFromEntry(entry),entry,isCustomShadowElf:/^_CustomShadowElf_\d+$/i.test(name)}}).filter(x=>x.name); }

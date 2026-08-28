@@ -47,3 +47,49 @@ if(fs.existsSync(exePath)){
   if(read.length!==222||JSON.stringify(read[221])!==JSON.stringify(cp[221]))throw new Error('Custom pool 255 metadata roundtrip mismatch');
   console.log('custom EXE patch smoke',read[0],read[1],read[221],'count',read.length);
 }
+
+// v0.8.6 regression: Custom Shadow Elf must clone ns322a actor template, not special _ShadowElf.
+{
+  const fresh=Z.parseDatabase(dbBytes);
+  const created=Z.createCustomShadowElf(fresh,[{fairyId:9,slot:0,level:20}]);
+  const base=fresh.entries.find(e=>e.fields.find(f=>f.column===19)?.string==='ns322a');
+  const col=(e,c)=>e.fields.find(f=>f.column===c);
+  if(created.template!=='ns322a')throw new Error('Custom Shadow template is not ns322a');
+  if(col(created.entry,3)?.uid!==col(base,3)?.uid)throw new Error('Custom Shadow actor ref differs from ns322a');
+  if(!((col(created.entry,25)?._modifiedString||col(created.entry,25)?.string||'').includes('C.u002s02m')))throw new Error('Custom Shadow lost C.u002s02m');
+  const team=Z.teamFromEntry(created.entry);
+  if(team.length!==1||team[0].fairyId!==9||team[0].level!==20)throw new Error('Custom Shadow team write mismatch');
+  console.log('custom shadow v0.8.6 template smoke',created.name,created.template,team);
+}
+
+// v0.8.6 regression: every newly added item is stored at input Y + 1.0.
+{
+  const scenePath=path.join(root,'sc_0231.scn');
+  if(fs.existsSync(scenePath)){
+    const src=new Uint8Array(fs.readFileSync(scenePath));
+    const iv=Z.itemsFromScene(src); const item=Z.ITEMS[4]; const proto=iv.items[0]?.model;
+    const before=iv.items.length;
+    const out=Z.addItems(src,item,{x:12.5,y:3.25,z:-7},proto,2);
+    const after=Z.itemsFromScene(out).items;
+    if(after.length!==before+2)throw new Error('Item batch count mismatch');
+    const added=after.slice(-2);
+    if(added.some(x=>Math.abs(x.position.y-4.25)>1e-5))throw new Error('New item Y offset is not +1.0');
+    console.log('item +1Y smoke',added.map(x=>x.position));
+  }
+}
+
+// v0.8.6 regression: hostile placement path for Custom Shadow Elf uses Trigger type=1 when radius=5.
+{
+  const scenePath=path.join(root,'sc_0231.scn');
+  if(fs.existsSync(scenePath)){
+    const fresh=Z.parseDatabase(dbBytes);
+    const created=Z.createCustomShadowElf(fresh,[{fairyId:26,slot:0,level:18}]);
+    const cat=Z.buildNpcCatalog(fresh);
+    const npc=cat.find(x=>x.uid===created.uid);
+    const src=new Uint8Array(fs.readFileSync(scenePath));
+    const out=Z.addPlacement(src,npc,{x:1,y:2,z:3},null,5);
+    const found=Z.placementsFromScene(out,cat).placements.find(x=>x.npc?.uid===created.uid);
+    if(!found||found.trigger.type!==1||Math.abs(found.attackRadius-5)>1e-6)throw new Error('Custom Shadow hostile placement mismatch');
+    console.log('custom shadow hostile smoke',found.trigger.type,found.attackRadius);
+  }
+}
