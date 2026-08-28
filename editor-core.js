@@ -236,24 +236,27 @@
     const tr=parseTriggers(bytes), sc=parseSceneItems(bytes); if(!tr||!sc) return {triggers:tr,scene:sc,placements:[]};
     const byUid=new Map(catalog.map(n=>[n.uid>>>0,n])); const trByIdx=new Map(tr.items.map(t=>[t.idx,t])); const out=[];
     for(const si of sc.items){
-      if(si.i2!==4) continue; const t=trByIdx.get(si.i1); if(!t||t.type!==2) continue; const npc=byUid.get(t.ii1>>>0);
-      if(npc) out.push({sceneItem:si,trigger:t,npc,name:si.s,position:t.vv});
+      if(si.i2!==4) continue; const t=trByIdx.get(si.i1); if(!t||(t.type!==2&&t.type!==1)) continue; const npc=byUid.get(t.ii1>>>0);
+      if(npc && (t.ii1>>>0)!==WILD_UID) out.push({kind:'npc',sceneItem:si,trigger:t,npc,name:si.s||npc.name,position:t.vv,attackRadius:t.type===1?Math.max(0,+t.int||0):0,hostileTrigger:t.type===1});
     }
     return {triggers:tr,scene:sc,placements:out};
   }
 
-  function addPlacement(bytes,npc,position,prototype){
+  function addPlacement(bytes,npc,position,prototype,attackRadius=0){
     const tr=parseTriggers(bytes), sc=parseSceneItems(bytes); if(!tr||!sc) throw new Error('В сцене нет Triggers/Scene');
     const used=new Set(tr.items.map(x=>x.idx)); let idx=0; while(used.has(idx)) idx++;
     const p=prototype ? JSON.parse(JSON.stringify(prototype)) : {type:2,someFlag:0,v:{x:0,y:0,z:1},ii:3,ii2:0,ii3:0,ii4:0,s:''};
-    const t={idx,type:2,someFlag:p.someFlag||0,v:p.v||{x:0,y:0,z:1},ii:p.ii||3,ii1:npc.uid>>>0,ii2:p.ii2||0,ii3:p.ii3||0,ii4:p.ii4||0,s:p.s||'',vv:{x:+position.x,y:+position.y,z:+position.z}};
+    const radius=Math.max(0,+attackRadius||0), type=radius>0?1:2;
+    const t={idx,type,someFlag:p.someFlag||0,v:p.v||{x:0,y:0,z:1},ii:p.ii||3,ii1:npc.uid>>>0,ii2:p.ii2||0,ii3:p.ii3||0,ii4:p.ii4||0,s:p.s||'',vv:{x:+position.x,y:+position.y,z:+position.z}};
+    if(type===1)t.int=radius;
     tr.items.push(t); sc.items.push({s:npc.name,i1:idx,i2:4});
     return patchScene(bytes,tr,sc);
   }
-  function updatePlacement(bytes, placement, npc, position, direction){
-    const tr=parseTriggers(bytes), sc=parseSceneItems(bytes); const t=tr.items.find(x=>x.idx===placement.trigger.idx); const si=sc.items.find(x=>x.i2===4&&x.i1===placement.trigger.idx&&x.s===placement.sceneItem.s);
+  function updatePlacement(bytes, placement, npc, position, direction, attackRadius){
+    const tr=parseTriggers(bytes), sc=parseSceneItems(bytes); const t=tr.items.find(x=>x.idx===placement.trigger.idx); const si=sc.items.find(x=>x.i2===4&&x.i1===placement.trigger.idx);
     if(!t||!si) throw new Error('Размещение не найдено после повторного чтения');
     t.ii1=npc.uid>>>0; t.vv={x:+position.x,y:+position.y,z:+position.z}; if(direction) t.v={x:+direction.x,y:+direction.y,z:+direction.z}; si.s=npc.name;
+    if(attackRadius!==undefined){const radius=Math.max(0,+attackRadius||0); if(radius>0){t.type=1;t.int=radius;}else{t.type=2;delete t.int;}}
     return patchScene(bytes,tr,sc);
   }
   function deletePlacement(bytes,placement){
