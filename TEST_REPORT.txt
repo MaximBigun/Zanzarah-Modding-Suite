@@ -1,20 +1,29 @@
-Zanzarah Enemy Editor v0.2 — test report
+Zanzarah World Editor v0.3 — test report
 
-SCN/FBS regression:
+FBS/NPC regression:
 - _fb0x05: 211 entries, binary roundtrip OK
-- scenes parsed: 258/258
+- scenes parsed for NPC: 258/258
 - NPC placements matched to FBS: 261
-- add/delete smoke test: OK
+- NPC add/delete smoke test: OK
 
-PAK/BSP validation on uploaded original data_0.pak:
-- PAK size: 774,465,076 bytes
+Item/collectable validation:
+- scenes parsed for Models_v3 + Behaviours + Scene: 258/258
+- collectable behaviours linked to ITM models: 688
+- scenes containing collectables: 74
+- observed collectable behaviour types: 1000, 1001, 1002
+- important direct model mappings confirmed from scene model names / item table:
+  itm003 = item 3, medicinal herbs
+  itm004 = item 4, elf money
+  itm017 = item 17, silver sphere
+  itm018 = item 18, gold sphere
+  itm019 = item 19, crystal sphere
+  itm060 = item 60, mana
+- item add -> reparse -> delete smoke test: 258/258
+- after add/delete, every tested SCN returned byte-for-byte to its original content: 258/258
+
+PAK/BSP validation:
+- original data_0.pak size: 774,465,076 bytes
 - entries: 9,549
-- BSP resources found: 261
-- SC_0231.BSP found in RESOURCES\\WORLDS
-- extracted SC_0231 RenderWare WORLD payload: 808,828 bytes
-- world sectors declared: 21
-- world sectors parsed: 21
-- vertices declared/parsed: 15,914
-- triangles declared/parsed: 10,666
-- geometry bounds: X 106.705..213.410, Y 34.350..68.701, Z 82.266..164.531
-- known NPC coordinates (e.g. nq3005 X119/Y43/Z127) fall inside these BSP bounds.
+- BSP resources: 261
+- ITMxxx DFF models used by item selector verified present in PAK
+- BSP ray-picking uses the actual parsed triangle mesh, not a 2D coordinate approximation

@@ -79,6 +79,75 @@
   }
   function serializeSceneItems(parsed){ const w=new Writer().u32(parsed.items.length); for(const i of parsed.items){ if(i._sRaw && i.s===i._sOriginal) w.zstrRaw(i._sRaw); else w.zstr(i.s||''); w.u32(i.i1).u32(i.i2); } return w.finish(); }
 
+
+  function parseModelsV3(bytes){
+    const sec=findSection(bytes,'Models_v3'); if(!sec) return null;
+    const r=new Reader(bytes,sec.dataStart), payloadStart=r.o, count=r.u32(), items=[];
+    for(let k=0;k<count;k++){
+      const m={}; m.idx=r.u32(); m._fileRaw=r.zstrRaw(); m.fileName=new TextDecoder('windows-1252').decode(m._fileRaw).replace(/\0+$/,''); m._fileOriginal=m.fileName;
+      m.position=r.vec(); m.rotation=r.vec(); m.scaleX=r.f32(); m.scaleY=r.f32(); m.scaleZ=r.f32(); m.color=r.bytes(4); m.i1=r.u8(); m.i15=r.i32(); m.i2=r.u8(); items.push(m);
+    }
+    return {sec,payloadStart,payloadEnd:r.o,count,items};
+  }
+  function serializeModelsV3(parsed){
+    const w=new Writer().u32(parsed.items.length);
+    for(const m of parsed.items){
+      w.u32(m.idx); if(m._fileRaw && m.fileName===m._fileOriginal) w.zstrRaw(m._fileRaw); else w.zstr(m.fileName||'');
+      w.vec(m.position).vec(m.rotation).f32(m.scaleX).f32(m.scaleY).f32(m.scaleZ).raw(m.color||Uint8Array.from([255,255,255,255])).u8(m.i1||0).i32(m.i15||0).u8(m.i2||0);
+    } return w.finish();
+  }
+  function parseBehaviours(bytes){
+    const sec=findSection(bytes,'Behaviours'); if(!sec) return null; const r=new Reader(bytes,sec.dataStart), payloadStart=r.o, count=r.u32(), items=[];
+    for(let k=0;k<count;k++) items.push({type:r.u32(),modelId:r.u32()});
+    return {sec,payloadStart,payloadEnd:r.o,count,items};
+  }
+  function serializeBehaviours(parsed){ const w=new Writer().u32(parsed.items.length); for(const b of parsed.items) w.u32(b.type).u32(b.modelId); return w.finish(); }
+  function patchMany(bytes,reps){ reps=reps.filter(Boolean).sort((a,b)=>b.s-a.s); let out=bytes; for(const x of reps) out=replaceRange(out,x.s,x.e,x.b); return out; }
+  function patchItemSections(bytes,models,behaviours,scene){
+    return patchMany(bytes,[
+      models&&{s:models.payloadStart,e:models.payloadEnd,b:serializeModelsV3(models)},
+      behaviours&&{s:behaviours.payloadStart,e:behaviours.payloadEnd,b:serializeBehaviours(behaviours)},
+      scene&&{s:scene.payloadStart,e:scene.payloadEnd,b:serializeSceneItems(scene)}
+    ]);
+  }
+
+  const ITEMS = [
+    [0,'Малый бальзам'],[1,'Средний бальзам'],[2,'Большой бальзам'],[3,'Лекарственные травы'],[4,'Деньги эльфов'],[5,'Тестовый амулет'],[6,'Кристалл'],[7,'Лекарство'],[10,'Клевер'],[13,'Золотая морковь'],[17,'Серебряный шар'],[18,'Золотой шар'],[19,'Хрустальный шар'],[21,'Ключ от подземелья'],[28,'Руна возврата'],[29,'Руна Сада фей'],[30,'Руна Тиралина'],[31,'Руна Данмора'],[32,'Руна Башни гномов'],[33,'Руна пещер'],[34,'Руна Ледяного мира'],[35,'Руна Царства облаков'],[36,'Руна Царства тьмы'],[37,'Руна дома'],[38,'Руна леса II'],[39,'Руна болота II'],[40,'Горная руна II'],[41,'Руна пещеры II'],[42,'Руна неба II'],[43,'Тёмная руна II'],[44,'Карта Воздуха'],[45,'Карта Земли'],[46,'Карта Огня'],[47,'Карта Природы'],[48,'Карта Пси-магии'],[51,'Эволюционный камень Воздуха'],[52,'Эволюционный камень Огня'],[53,'Эволюционный камень Природы'],[60,'Мана'],[70,'Инструменты гномов']
+  ].map(([id,name])=>({id,name,model:'itm'+String(id).padStart(3,'0')}));
+  const ITEM_BY_MODEL=new Map(ITEMS.map(x=>[x.model.toLowerCase(),x]));
+  function itemsFromScene(bytes){
+    const models=parseModelsV3(bytes), behaviours=parseBehaviours(bytes), scene=parseSceneItems(bytes); if(!models||!behaviours||!scene) return {models,behaviours,scene,items:[]};
+    const byId=new Map(models.items.map(m=>[m.idx,m])), out=[];
+    for(const b of behaviours.items){
+      if(b.type!==1000&&b.type!==1001&&b.type!==1002) continue; const m=byId.get(b.modelId); if(!m||!/^itm/i.test(m.fileName)) continue;
+      const item=ITEM_BY_MODEL.get(m.fileName.toLowerCase())||null; const si=scene.items.find(x=>x.i2===3&&x.i1===m.idx)||null;
+      out.push({kind:'item',key:'item:'+m.idx,model:m,behaviour:b,sceneItem:si,item,itemId:item?.id??null,name:item?.name||m.fileName,position:m.position});
+    }
+    return {models,behaviours,scene,items:out};
+  }
+  function nextModelIdx(models){ const used=new Set(models.items.map(x=>x.idx)); let i=0; while(used.has(i)) i++; return i; }
+  function cloneModelPrototype(proto){
+    if(proto) return {rotation:{...proto.rotation},scaleX:proto.scaleX,scaleY:proto.scaleY,scaleZ:proto.scaleZ,color:Uint8Array.from(proto.color||[255,255,255,255]),i1:proto.i1||0,i15:proto.i15||0,i2:proto.i2||0};
+    return {rotation:{x:0,y:0,z:1},scaleX:1,scaleY:1,scaleZ:1,color:Uint8Array.from([255,255,255,255]),i1:0,i15:0,i2:0};
+  }
+  function addItem(bytes,item,position,prototype){
+    const models=parseModelsV3(bytes), behaviours=parseBehaviours(bytes), scene=parseSceneItems(bytes); if(!models||!behaviours||!scene) throw new Error('В сцене нет Models_v3/Behaviours/Scene');
+    const idx=nextModelIdx(models), p=cloneModelPrototype(prototype), fileName=item.model||('itm'+String(item.id).padStart(3,'0'));
+    models.items.push({idx,fileName,position:{x:+position.x,y:+position.y,z:+position.z},rotation:p.rotation,scaleX:p.scaleX,scaleY:p.scaleY,scaleZ:p.scaleZ,color:p.color,i1:p.i1,i15:p.i15,i2:p.i2});
+    behaviours.items.push({type:1000,modelId:idx}); scene.items.push({s:'',i1:idx,i2:3});
+    return patchItemSections(bytes,models,behaviours,scene);
+  }
+  function updateItem(bytes,placed,item,position){
+    const models=parseModelsV3(bytes), behaviours=parseBehaviours(bytes), scene=parseSceneItems(bytes); const idx=placed.model.idx, m=models.items.find(x=>x.idx===idx); if(!m) throw new Error('Предмет не найден после повторного чтения');
+    m.position={x:+position.x,y:+position.y,z:+position.z}; if(item) m.fileName=item.model||('itm'+String(item.id).padStart(3,'0'));
+    return patchItemSections(bytes,models,behaviours,scene);
+  }
+  function deleteItem(bytes,placed){
+    const models=parseModelsV3(bytes), behaviours=parseBehaviours(bytes), scene=parseSceneItems(bytes), idx=placed.model.idx;
+    models.items=models.items.filter(x=>x.idx!==idx); behaviours.items=behaviours.items.filter(x=>!(x.modelId===idx&&(x.type===1000||x.type===1001||x.type===1002))); scene.items=scene.items.filter(x=>!(x.i1===idx&&x.i2===3));
+    return patchItemSections(bytes,models,behaviours,scene);
+  }
+
   function patchScene(bytes, triggerParsed, sceneParsed){
     const reps=[
       {s:triggerParsed.payloadStart,e:triggerParsed.payloadEnd,b:serializeTriggers(triggerParsed)},
@@ -187,5 +256,5 @@
 
   function hex32(v){ return (v>>>0).toString(16).toUpperCase().padStart(8,'0'); }
 
-  return {FAIRIES,FAIRY_BY_ID,Reader,Writer,parseIndex,parseDatabase,serializeDatabase,buildNpcCatalog,teamFromEntry,setTeam,parseTriggers,parseSceneItems,patchScene,placementsFromScene,addPlacement,updatePlacement,deletePlacement,hex32};
+  return {FAIRIES,FAIRY_BY_ID,ITEMS,ITEM_BY_MODEL,Reader,Writer,parseIndex,parseDatabase,serializeDatabase,buildNpcCatalog,teamFromEntry,setTeam,parseTriggers,parseSceneItems,parseModelsV3,parseBehaviours,patchScene,placementsFromScene,addPlacement,updatePlacement,deletePlacement,itemsFromScene,addItem,updateItem,deleteItem,hex32};
 });
