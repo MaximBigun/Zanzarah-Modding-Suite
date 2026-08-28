@@ -1,5 +1,5 @@
 <!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Zanzarah World Editor</title><link rel="stylesheet" href="style.css"></head><body>
-<header><div><h1>Zanzarah World Editor <span>v0.8.4 EXP</span></h1><p>Мастера фей, предметы, дикие феи и размещение на настоящей BSP-карте</p></div><div class="toolbar"><label class="btn primary">Открыть папку игры<input id="folder" type="file" webkitdirectory multiple hidden></label><label class="btn">Выбрать data_0.pak<input id="pakFile" type="file" accept=".pak" hidden></label><button id="saveFbs" class="btn" disabled>Скачать _fb0x05.fbs</button><button id="saveScn" class="btn" disabled>Скачать текущую SCN</button></div></header>
+<header><div><h1>Zanzarah World Editor <span>v0.8.5 EXP</span></h1><p>Мастера фей, предметы, дикие феи и размещение на настоящей BSP-карте</p></div><div class="toolbar"><label class="btn primary">Открыть папку игры<input id="folder" type="file" webkitdirectory multiple hidden></label><label class="btn">Выбрать data_0.pak<input id="pakFile" type="file" accept=".pak" hidden></label><button id="saveFbs" class="btn" disabled>Скачать _fb0x05.fbs</button><button id="saveScn" class="btn" disabled>Скачать текущую SCN</button></div></header>
 <div id="status" class="status">Выберите папку со <b>_fb0x05.fbs</b> и <b>.scn</b>. Для 3D-карты можно отдельно выбрать <b>data_0.pak</b>.</div>
 <main>
 <section class="panel scenes"><div class="panelhead"><b>Сцены</b><input id="sceneSearch" placeholder="Поиск sc_0231"></div><div id="sceneList" class="list"></div></section>
@@ -23,13 +23,13 @@
 <div id="wildSingleMode" hidden><div class="row"><label>Фея<select id="wildSingleFairy"></select></label><label>Уровни<select id="wildSingleLevel"></select></label></div><div id="wildSingleInfo" class="mini"></div></div>
 <fieldset><legend>Место нападения</legend><div class="row3"><label>X<input id="wx" type="number" step="0.001"></label><label>Y<input id="wy" type="number" step="0.001"></label><label>Z<input id="wz" type="number" step="0.001"></label></div>
 <div class="row3"><label>Шанс, %<input id="wchance" type="number" min="0" max="100" step="1" value="50"></label><label>Радиус<input id="wradius" type="number" min="0" step="0.05" value="5"></label><label>Режим (raw)<input id="wmode" type="number" step="1" value="0"></label></div>
-<p class="mini">В режиме «Одна конкретная фея» редактор автоматически создаёт или повторно использует Pool 34–45 с вероятностью 100% для выбранной феи. Для такого объекта нужен пропатченный zanthp.exe из вкладки «Пулы». ii3 похож на шанс срабатывания, float-параметр — на радиус. «Режим (raw)» пока не расшифрован и сохраняется при редактировании.</p>
+<p class="mini">В режиме «Одна конкретная фея» редактор автоматически создаёт или повторно использует Pool 34–255 с вероятностью 100% для выбранной феи. Для такого объекта нужен пропатченный zanthp.exe из вкладки «Пулы». ii3 похож на шанс срабатывания, float-параметр — на радиус. «Режим (raw)» пока не расшифрован и сохраняется при редактировании.</p>
 <button id="applyWild" class="btn" disabled>Применить к SCN</button> <button id="deleteWild" class="btn danger" disabled>Удалить точку</button></fieldset>
 <button id="addWildCoords" class="btn" disabled>+ Добавить по координатам</button>
 </div>
 
 <div id="poolPane" class="form" hidden>
-<p class="warning"><b>Экспериментальный патч EXE.</b> Он оставляет оригинальные Pool 0–33 без изменений и добавляет новые Pool <b>34–45</b>. Всегда сохраняйте оригинальный zanthp.exe.</p>
+<p class="warning"><b>Экспериментальный патч EXE.</b> Он оставляет оригинальные Pool 0–33 без изменений и добавляет новые Pool <b>34–255</b>. Всегда сохраняйте оригинальный zanthp.exe.</p>
 <label>zanthp.exe<input id="exeFile" type="file" accept=".exe"></label><div id="exeStatus" class="mini">EXE ещё не выбран.</div>
 <fieldset><legend>Кастомный encounter-пул</legend>
 <div class="row"><label>ID пула<select id="customPoolId"></select></label><label class="checkline"><input id="customEnabled" type="checkbox"> Активировать этот пул</label></div>
@@ -40,7 +40,7 @@
 <button id="saveCustomPool" class="btn success">Запомнить настройки пула</button>
 </fieldset>
 <button id="patchExe" class="btn primary" disabled>Скачать zanthp_custom.exe</button>
-<p class="mini">После скачивания: сделайте резервную копию оригинального <b>zanthp.exe</b>, замените его пропатченной копией и в SCN назначьте точке Pool 34–45. Старые 0–33 продолжают работать как раньше.</p>
+<p class="mini">После скачивания: сделайте резервную копию оригинального <b>zanthp.exe</b>, замените его пропатченной копией и в SCN назначьте точке Pool 34–255. Старые 0–33 продолжают работать как раньше.</p>
 </div>
 <div class="form"><details><summary>Диагностика</summary><pre id="debug"></pre></details></div>
 </section>
