@@ -38,3 +38,10 @@ v0.4.1 BSP name resolution:
 - data_0.pak contains ..\RESOURCES\WORLDS\MD_0004.BSP (confirmed)
 - sc_0231.scn [Misc].sceneFile = sc_0231
 - data_0.pak contains ..\RESOURCES\WORLDS\SC_0231.BSP (confirmed)
+
+
+v0.4.2 BSP real-data test:
+SC_0231.BSP: 21 sectors, 10666 triangles, 15914 source vertices, RW 0x304 — OK
+MD_0004.BSP: 50 sectors, 6491 triangles, 10545 source vertices, RW 0x310 — OK
+Viewer overlay handler: fixed to this.o — OK
+World struct offsets: worldSectors +40, format +48 — OK

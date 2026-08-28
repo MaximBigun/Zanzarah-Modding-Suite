@@ -16,12 +16,12 @@ async function bspFromPak(file, sceneName){
   const start=headSize+e.off; return new Uint8Array(await file.slice(start+4,start+e.size-8).arrayBuffer());
 }
 function parseBSP(bytes){
-  const v=new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength); if(v.byteLength<80||u32(v,0)!==0x0b) throw new Error('Это не RenderWare BSP');
+  const v=new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength); if(v.byteLength<80||u32(v,0)!==0x0b) throw new Error('Это не RenderWare BSP'); const rwVersion=u32(v,8);
   const worldStruct=12; if(u32(v,worldStruct)!==1) throw new Error('Не найден WORLD STRUCT');
-  const d=worldStruct+12; const triTotal=u32(v,d+28), vertTotal=u32(v,d+32), worldSectors=u32(v,d+44), flags=u32(v,d+52);
+  const d=worldStruct+12; const triTotal=u32(v,d+28), vertTotal=u32(v,d+32), worldSectors=u32(v,d+40), flags=u32(v,d+48);
   const hasNormals=!!(flags&0x10), hasPrelit=!!(flags&0x08), hasTex=!!(flags&0x04), hasTex2=!!(flags&0x80);
   const out=[], cols=[]; let sectors=0, tris=0; const bounds={min:[Infinity,Infinity,Infinity],max:[-Infinity,-Infinity,-Infinity]};
-  for(let o=0;o+24<v.byteLength;o+=4){ if(u32(v,o)!==9||u32(v,o+8)!==772) continue; if(u32(v,o+12)!==1||u32(v,o+20)!==772) continue;
+  for(let o=0;o+24<v.byteLength;o+=4){ if(u32(v,o)!==9||u32(v,o+8)!==rwVersion) continue; if(u32(v,o+12)!==1||u32(v,o+20)!==rwVersion) continue;
     let p=o+24; const materialBase=u32(v,p), tc=u32(v,p+4), vc=u32(v,p+8); p+=44; if(vc>100000||tc>100000||p+vc*12>v.byteLength) continue;
     const verts=new Array(vc); for(let i=0;i<vc;i++){const a=[f32(v,p),f32(v,p+4),f32(v,p+8)];p+=12;verts[i]=a;for(let k=0;k<3;k++){bounds.min[k]=Math.min(bounds.min[k],a[k]);bounds.max[k]=Math.max(bounds.max[k],a[k]);}}
     if(hasNormals)p+=vc*4; let colors=null; if(hasPrelit){colors=new Array(vc);for(let i=0;i<vc;i++){colors[i]=[v.getUint8(p)/255,v.getUint8(p+1)/255,v.getUint8(p+2)/255];p+=4;}}
@@ -41,7 +41,7 @@ function rayTri(ro,rd,a,b,c){const e1=[b[0]-a[0],b[1]-a[1],b[2]-a[2]],e2=[c[0]-a
 class Viewer{
  constructor(world,overlay){this.c=world;this.o=overlay;this.gl=world.getContext('webgl',{antialias:true});this.geo=null;this.yaw=.7;this.pitch=.55;this.dist=140;this.center=[0,0,0];this.points=[];this.selected=null;this.drag=false;this.init();}
  init(){const gl=this.gl;if(!gl)return;const vs=`attribute vec3 p;attribute vec3 c;uniform mat4 m;varying vec3 vc;void main(){vc=c;gl_Position=m*vec4(p,1.0);}`;const fs=`precision mediump float;varying vec3 vc;void main(){gl_FragColor=vec4(vc,1.0);}`;const sh=(t,s)=>{const x=gl.createShader(t);gl.shaderSource(x,s);gl.compileShader(x);return x};this.prog=gl.createProgram();gl.attachShader(this.prog,sh(gl.VERTEX_SHADER,vs));gl.attachShader(this.prog,sh(gl.FRAGMENT_SHADER,fs));gl.linkProgram(this.prog);this.bp=gl.createBuffer();this.bc=gl.createBuffer();
-  overlay.addEventListener('pointerdown',e=>{this.drag=true;this.dragMoved=false;this.px=e.clientX;this.py=e.clientY;overlay.setPointerCapture(e.pointerId)});overlay.addEventListener('pointermove',e=>{if(!this.drag)return;const mx=e.clientX-this.px,my=e.clientY-this.py;if(Math.abs(mx)+Math.abs(my)>2)this.dragMoved=true;this.yaw-=mx*.008;this.pitch=Math.max(-1.35,Math.min(1.35,this.pitch+my*.008));this.px=e.clientX;this.py=e.clientY;this.draw()});overlay.addEventListener('pointerup',()=>{if(this.dragMoved)this.suppressClickUntil=performance.now()+120;this.drag=false});overlay.addEventListener('wheel',e=>{e.preventDefault();this.dist=Math.max(5,this.dist*Math.exp(e.deltaY*.001));this.draw()},{passive:false}); }
+  this.o.addEventListener('pointerdown',e=>{this.drag=true;this.dragMoved=false;this.px=e.clientX;this.py=e.clientY;this.o.setPointerCapture(e.pointerId)});this.o.addEventListener('pointermove',e=>{if(!this.drag)return;const mx=e.clientX-this.px,my=e.clientY-this.py;if(Math.abs(mx)+Math.abs(my)>2)this.dragMoved=true;this.yaw-=mx*.008;this.pitch=Math.max(-1.35,Math.min(1.35,this.pitch+my*.008));this.px=e.clientX;this.py=e.clientY;this.draw()});this.o.addEventListener('pointerup',()=>{if(this.dragMoved)this.suppressClickUntil=performance.now()+120;this.drag=false});this.o.addEventListener('wheel',e=>{e.preventDefault();this.dist=Math.max(5,this.dist*Math.exp(e.deltaY*.001));this.draw()},{passive:false}); }
  setGeometry(g){this.geo=g;const b=g.bounds;this.center=b.min.map((x,i)=>(x+b.max[i])/2);const span=Math.max(...b.max.map((x,i)=>x-b.min[i]));this.dist=Math.max(20,span*1.25);const gl=this.gl;gl.bindBuffer(gl.ARRAY_BUFFER,this.bp);gl.bufferData(gl.ARRAY_BUFFER,g.positions,gl.STATIC_DRAW);gl.bindBuffer(gl.ARRAY_BUFFER,this.bc);gl.bufferData(gl.ARRAY_BUFFER,g.colors,gl.STATIC_DRAW);this.draw()}
  setPoints(points,selected){this.points=points||[];this.selected=selected;this.draw()}
  reset(){if(this.geo)this.setGeometry(this.geo)}

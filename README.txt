@@ -25,3 +25,10 @@ v0.4.1 — исправление BSP для сцен md_*
 - Пример: md_Doommine.scn -> sceneFile md_0004 -> RESOURCES\WORLDS\MD_0004.BSP.
 - Имя SCN остаётся запасным вариантом для обычных сцен.
 - Поиск отдельного BSP стал регистронезависимым.
+
+
+v0.4.2 — исправление 3D BSP:
+- исправлена ошибка `overlay is not defined` в Viewer;
+- исправлены смещения World Struct (worldSectors/format);
+- RenderWare version больше не захардкожена на 0x304; поддержан 0x310 у md_* BSP;
+- проверено на SC_0231.BSP и MD_0004.BSP, извлечённых из пользовательского data_0.pak.
