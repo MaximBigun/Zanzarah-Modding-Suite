@@ -361,7 +361,102 @@
     return patchScene(bytes,tr,sc);
   }
 
+  // Experimental zanthp.exe custom encounter-pool patch.
+  // Original function 0x00476102 accepts only pool 0..33. We redirect its entry
+  // to executable slack in _rwcseg, keep 0..33 on the original jump table and
+  // add 12 new pool IDs 34..45. Each custom pool can contain up to 8 weighted slots.
+  const CUSTOM_POOL_IDS=Array.from({length:12},(_,i)=>34+i);
+  const ZANTHP_EXPECTED_SIZE=2170880;
+  const ZANTHP_BASE=0x400000, ZANTHP_POOL_FN=0x476102, ZANTHP_ORIG_TABLE_JMP=0x476118, ZANTHP_POOL_EXIT=0x4767A6;
+  const ZANTHP_CAVE=0x5A5100, ZANTHP_CUSTOM_TABLE=0x5A5140, ZANTHP_STUB_START=0x5A5180, ZANTHP_META=0x5A5D00;
+  const ZANTHP_HELP_MAKE=0x499D1E, ZANTHP_HELP_ADD=0x46E038;
+  const ZANTHP_META_MAGIC='ZEECPV1\0';
+  function rel32(srcNext,dst){ return (dst-srcNext)>>>0; }
+  function putU32(a,o,v){a[o]=v&255;a[o+1]=(v>>>8)&255;a[o+2]=(v>>>16)&255;a[o+3]=(v>>>24)&255;}
+  function getU32(a,o){return (a[o]|(a[o+1]<<8)|(a[o+2]<<16)|(a[o+3]<<24))>>>0;}
+  function vaOff(va){return va-ZANTHP_BASE;}
+  function defaultCustomPools(){return CUSTOM_POOL_IDS.map(id=>({id,enabled:false,levelParam:5,slots:[0]}));}
+  function normalizeCustomPool(c){
+    const id=+c.id, levelParam=Math.max(5,Math.min(80,+c.levelParam||5));
+    let slots=(c.slots||[]).map(Number).filter(Number.isFinite).map(x=>x>>>0).slice(0,8);
+    if(!slots.length)slots=[0];
+    return {id,enabled:!!c.enabled,levelParam,slots};
+  }
+  function isOriginalZanthp(bytes){
+    if(!bytes||bytes.length!==ZANTHP_EXPECTED_SIZE)return false;
+    const o=vaOff(ZANTHP_POOL_FN), sig=[0x55,0x8B,0xEC,0x81,0xEC,0x28,0x01,0x00,0x00,0x8B,0x45,0x08,0x83,0xF8,0x21,0x56];
+    return sig.every((v,i)=>bytes[o+i]===v);
+  }
+  function hasCustomPoolPatch(bytes){
+    if(!bytes||bytes.length!==ZANTHP_EXPECTED_SIZE)return false;
+    const o=vaOff(ZANTHP_META);
+    for(let i=0;i<ZANTHP_META_MAGIC.length;i++)if(bytes[o+i]!==ZANTHP_META_MAGIC.charCodeAt(i))return false;
+    return bytes[vaOff(ZANTHP_POOL_FN)]===0xE9;
+  }
+  function buildCustomStub(addr,cfg){
+    const b=[], emit=(...xs)=>b.push(...xs), u32=v=>emit(v&255,(v>>>8)&255,(v>>>16)&255,(v>>>24)&255);
+    let cur=addr; const call=dst=>{emit(0xE8);u32(rel32(cur+5,dst));cur+=5};
+    const local=[0xFC,0xF4,0xEC,0xE4,0xDC,0xD4,0xCC,0xC4];
+    for(let i=0;i<cfg.slots.length;i++){
+      emit(0x68);u32(cfg.slots[i]);cur+=5;             // push fairy id
+      emit(0x6A,0x02);cur+=2;                          // push 2
+      emit(0x8D,0x4D,local[i]);cur+=3;                 // lea ecx,[ebp-local]
+      call(ZANTHP_HELP_MAKE);
+      emit(0x8B,0x4D,0x0C);cur+=3;                    // mov ecx,[ebp+0Ch]
+      emit(0x50);cur+=1;                               // push eax
+      call(ZANTHP_HELP_ADD);
+    }
+    emit(0x8B,0x45,0x10);cur+=3;                      // mov eax,[ebp+10h]
+    emit(0xC7,0x00);u32(cfg.levelParam);cur+=6;        // mov dword [eax],M
+    emit(0xE9);u32(rel32(cur+5,ZANTHP_POOL_EXIT));cur+=5;
+    return new Uint8Array(b);
+  }
+  function buildCustomDispatcher(maxId){
+    const b=[], emit=(...xs)=>b.push(...xs), u32=v=>emit(v&255,(v>>>8)&255,(v>>>16)&255,(v>>>24)&255);
+    let cur=ZANTHP_CAVE;
+    emit(0x55,0x8B,0xEC,0x81,0xEC,0x28,0x01,0x00,0x00);cur+=9; // original prologue
+    emit(0x8B,0x45,0x08);cur+=3;                                    // eax=pool
+    emit(0x83,0xF8,maxId&255);cur+=3;                               // cmp eax,max
+    emit(0x56);cur+=1;                                               // push esi
+    emit(0x0F,0x87);u32(rel32(cur+6,ZANTHP_POOL_EXIT));cur+=6;      // ja exit
+    emit(0x83,0xF8,0x21);cur+=3;                                    // cmp eax,33
+    emit(0x0F,0x86);u32(rel32(cur+6,ZANTHP_ORIG_TABLE_JMP));cur+=6; // jbe original table
+    emit(0x83,0xE8,0x22);cur+=3;                                    // sub eax,34
+    emit(0xFF,0x24,0x85);u32(ZANTHP_CUSTOM_TABLE);cur+=7;            // jmp [eax*4+table]
+    return new Uint8Array(b);
+  }
+  function writeCustomMeta(out,configs){
+    const o=vaOff(ZANTHP_META); out.fill(0,o,o+0x200);
+    for(let i=0;i<ZANTHP_META_MAGIC.length;i++)out[o+i]=ZANTHP_META_MAGIC.charCodeAt(i);
+    out[o+8]=1; out[o+9]=CUSTOM_POOL_IDS.length;
+    let q=o+16;
+    for(const raw of configs){const c=normalizeCustomPool(raw);out[q]=c.id;out[q+1]=c.enabled?1:0;out[q+2]=c.levelParam;out[q+3]=c.slots.length;for(let j=0;j<8;j++){const v=c.slots[j]??0;out[q+4+j*2]=v&255;out[q+5+j*2]=(v>>>8)&255;}q+=20;}
+  }
+  function readZanthpCustomPools(bytes){
+    if(!hasCustomPoolPatch(bytes))return null; const out=[],o=vaOff(ZANTHP_META);let q=o+16;
+    for(let i=0;i<CUSTOM_POOL_IDS.length;i++){const id=bytes[q],enabled=!!bytes[q+1],levelParam=bytes[q+2],n=Math.max(1,Math.min(8,bytes[q+3]));const slots=[];for(let j=0;j<n;j++)slots.push(bytes[q+4+j*2]|(bytes[q+5+j*2]<<8));out.push({id,enabled,levelParam,slots});q+=20;}
+    return out;
+  }
+  function patchZanthpCustomPools(bytes,configs){
+    if(!(isOriginalZanthp(bytes)||hasCustomPoolPatch(bytes)))throw new Error('Этот zanthp.exe не совпадает с поддерживаемой версией (ожидается EXE 2 170 880 байт и оригинальная функция wild pool).');
+    const cfgMap=new Map((configs||[]).map(c=>[+c.id,normalizeCustomPool(c)]));
+    const cfgs=CUSTOM_POOL_IDS.map(id=>cfgMap.get(id)||{id,enabled:false,levelParam:5,slots:[0]});
+    const out=new Uint8Array(bytes);
+    // Expand _rwcseg VirtualSize from 0xDC to 0x1000 (no section movement; raw size already 0x1000).
+    const pe=getU32(out,0x3C), optSize=out[pe+20]|(out[pe+21]<<8), sec=pe+24+optSize, rwc=sec+40; putU32(out,rwc+8,0x1000);
+    // Function entry -> dispatcher.
+    const eo=vaOff(ZANTHP_POOL_FN); out[eo]=0xE9;putU32(out,eo+1,rel32(ZANTHP_POOL_FN+5,ZANTHP_CAVE));
+    // Clear our executable slack and write dispatcher/table/stubs.
+    out.fill(0x90,vaOff(ZANTHP_CAVE),vaOff(ZANTHP_META));
+    const disp=buildCustomDispatcher(CUSTOM_POOL_IDS[CUSTOM_POOL_IDS.length-1]);out.set(disp,vaOff(ZANTHP_CAVE));
+    let addr=ZANTHP_STUB_START; const ptrs=[];
+    for(const cfg0 of cfgs){const cfg=cfg0.enabled?cfg0:{...cfg0,slots:[0],levelParam:5};const stub=buildCustomStub(addr,cfg);if(addr+stub.length>=ZANTHP_META)throw new Error('Кастомные пулы не помещаются в code cave');out.set(stub,vaOff(addr));ptrs.push(addr);addr=(addr+stub.length+15)&~15;}
+    for(let i=0;i<ptrs.length;i++)putU32(out,vaOff(ZANTHP_CUSTOM_TABLE)+i*4,ptrs[i]);
+    writeCustomMeta(out,cfgs);
+    return out;
+  }
+
   function hex32(v){ return (v>>>0).toString(16).toUpperCase().padStart(8,'0'); }
 
-  return {FAIRIES,FAIRY_BY_ID,ITEMS,ITEM_BY_MODEL,WILD_UID,WILD_POOLS,WILD_POOL_BY_ID,Reader,Writer,parseIndex,parseDatabase,serializeDatabase,buildNpcCatalog,teamFromEntry,setTeam,parseTriggers,parseMisc,parseSceneItems,parseModelsV3,parseBehaviours,patchScene,placementsFromScene,addPlacement,updatePlacement,deletePlacement,itemsFromScene,addItem,updateItem,deleteItem,wildFromScene,addWild,updateWild,deleteWild,hex32};
+  return {FAIRIES,FAIRY_BY_ID,ITEMS,ITEM_BY_MODEL,WILD_UID,WILD_POOLS,WILD_POOL_BY_ID,CUSTOM_POOL_IDS,wildLevelRange,defaultCustomPools,isOriginalZanthp,hasCustomPoolPatch,readZanthpCustomPools,patchZanthpCustomPools,Reader,Writer,parseIndex,parseDatabase,serializeDatabase,buildNpcCatalog,teamFromEntry,setTeam,parseTriggers,parseMisc,parseSceneItems,parseModelsV3,parseBehaviours,patchScene,placementsFromScene,addPlacement,updatePlacement,deletePlacement,itemsFromScene,addItem,updateItem,deleteItem,wildFromScene,addWild,updateWild,deleteWild,hex32};
 });

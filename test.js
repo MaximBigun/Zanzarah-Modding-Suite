@@ -31,3 +31,17 @@ const fn='sc_0231.scn';let b=new Uint8Array(fs.readFileSync(path.join(sceneDir,f
 let added=v2.placements[v2.placements.length-1];b=Z.deletePlacement(b,added);let v3=Z.placementsFromScene(b,catalog);console.log('delete smoke',v2.placements.length,'->',v3.placements.length);
 
 }else{console.log('SCN corpus not mounted; scene regression tests skipped');}
+// Custom pool EXE patch smoke test (IDs 34..45).
+const exePath=path.join(root,'zanthp.exe');
+if(fs.existsSync(exePath)){
+  const exe=new Uint8Array(fs.readFileSync(exePath));
+  if(!Z.isOriginalZanthp(exe))throw new Error('Original zanthp.exe signature mismatch');
+  const cp=Z.defaultCustomPools();
+  cp[0]={id:34,enabled:true,levelParam:24,slots:[15,37]};
+  cp[1]={id:35,enabled:true,levelParam:42,slots:[6,6,24,25]};
+  const patched=Z.patchZanthpCustomPools(exe,cp), read=Z.readZanthpCustomPools(patched);
+  if(!Z.hasCustomPoolPatch(patched))throw new Error('Custom pool patch marker missing');
+  if(JSON.stringify(read[0])!==JSON.stringify(cp[0]))throw new Error('Custom pool 34 metadata roundtrip mismatch');
+  if(JSON.stringify(read[1])!==JSON.stringify(cp[1]))throw new Error('Custom pool 35 metadata roundtrip mismatch');
+  console.log('custom EXE patch smoke',read[0],read[1]);
+}
