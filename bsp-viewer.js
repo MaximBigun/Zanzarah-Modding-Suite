@@ -8,8 +8,11 @@ async function bspFromPak(file, sceneName){
   for(let i=0;i<num;i++){ const n=u32(v,p); p+=4; if(n>2048||p+n+8>v.byteLength) throw new Error('Заголовок PAK больше 1 МБ или повреждён');
     const bytes=new Uint8Array(headBuf,p,n); p+=n; let name=''; for(const b of bytes) name+=String.fromCharCode(b);
     const off=u32(v,p), size=u32(v,p+4); p+=8; entries.push({name,off,size}); }
-  const headSize=p, target=('\\WORLDS\\'+sceneName.replace(/\.scn$/i,'.BSP')).toUpperCase();
-  const e=entries.find(x=>x.name.toUpperCase().endsWith(target)); if(!e) throw new Error('BSP для '+sceneName+' не найден в PAK');
+  const headSize=p;
+  const raw=String(sceneName||'').replace(/\\/g,'/').split('/').pop();
+  const base=raw.replace(/\.(?:scn|bsp)$/i,'');
+  const target=('\\WORLDS\\'+base+'.BSP').toUpperCase();
+  const e=entries.find(x=>x.name.toUpperCase().endsWith(target)); if(!e) throw new Error('BSP '+base+'.BSP не найден в PAK');
   const start=headSize+e.off; return new Uint8Array(await file.slice(start+4,start+e.size-8).arrayBuffer());
 }
 function parseBSP(bytes){

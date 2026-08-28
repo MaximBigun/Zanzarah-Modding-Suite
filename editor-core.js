@@ -71,6 +71,13 @@
     }
     return w.finish();
   }
+  function parseMisc(bytes){
+    const sec=findSection(bytes,'Misc'); if(!sec) return null;
+    const r=new Reader(bytes,sec.dataStart);
+    const sceneFile=r.zstr(), scenePath=r.zstr(), texturePath=r.zstr();
+    return {sceneFile,scenePath,texturePath};
+  }
+
   function parseSceneItems(bytes){
     const sec=findSection(bytes,'Scene'); if(!sec) return null;
     const r=new Reader(bytes,sec.dataStart), payloadStart=r.o, count=r.u32(), items=[];
@@ -293,5 +300,5 @@
 
   function hex32(v){ return (v>>>0).toString(16).toUpperCase().padStart(8,'0'); }
 
-  return {FAIRIES,FAIRY_BY_ID,ITEMS,ITEM_BY_MODEL,WILD_UID,Reader,Writer,parseIndex,parseDatabase,serializeDatabase,buildNpcCatalog,teamFromEntry,setTeam,parseTriggers,parseSceneItems,parseModelsV3,parseBehaviours,patchScene,placementsFromScene,addPlacement,updatePlacement,deletePlacement,itemsFromScene,addItem,updateItem,deleteItem,wildFromScene,addWild,updateWild,deleteWild,hex32};
+  return {FAIRIES,FAIRY_BY_ID,ITEMS,ITEM_BY_MODEL,WILD_UID,Reader,Writer,parseIndex,parseDatabase,serializeDatabase,buildNpcCatalog,teamFromEntry,setTeam,parseTriggers,parseMisc,parseSceneItems,parseModelsV3,parseBehaviours,patchScene,placementsFromScene,addPlacement,updatePlacement,deletePlacement,itemsFromScene,addItem,updateItem,deleteItem,wildFromScene,addWild,updateWild,deleteWild,hex32};
 });

@@ -11,7 +11,25 @@ function renderNpcSelect(){const s=$('npcSelect');s.innerHTML='';for(const n of 
 function renderItemSelect(){const s=$('itemSelect');s.innerHTML='';for(const it of ZEE.ITEMS){const o=document.createElement('option');o.value=it.id;o.textContent=`${it.id}: ${it.name}`;s.appendChild(o)}s.value='4'}
 function renderSceneList(){const q=$('sceneSearch').value.toLowerCase(),box=$('sceneList');box.innerHTML='';for(const name of [...state.scenes.keys()].sort()){if(q&&!name.includes(q))continue;const b=document.createElement('button');b.textContent=name;b.className=name===state.sceneName?'active':'';const c=state._counts.get(name);if(c){const sm=document.createElement('small');sm.textContent=`${c.npc} NPC · ${c.items} предм. · ${c.wild||0} диких`;b.appendChild(sm)}b.onclick=()=>openScene(name);box.appendChild(b)}}
 async function openScene(name){try{const f=state.scenes.get(name);state.sceneBytes=new Uint8Array(await f.arrayBuffer());state.sceneName=name;state.sceneDirty=false;state.undoByScene.set(name,[]);cancelPlace();refreshScene();renderSceneList();updateUndoButton();await loadBspForScene(name)}catch(e){alert('Не удалось открыть сцену: '+e.message);console.error(e)}}
-async function loadBspForScene(name){const bspName=name.replace(/\.scn$/i,'.bsp').toLowerCase();$('bspInfo').textContent='Загрузка BSP…';try{let bytes;const direct=state.files.get(bspName);if(direct)bytes=new Uint8Array(await direct.arrayBuffer());else if(state.pak)bytes=await ZBSP.bspFromPak(state.pak,name);else throw new Error('нет BSP/data_0.pak');state.bsp=ZBSP.parseBSP(bytes);if(!state.viewer)state.viewer=new ZBSP.Viewer($('worldCanvas'),$('mapCanvas'));state.viewer.setGeometry(state.bsp);drawMap();$('bspInfo').textContent=`${state.bsp.sectors} сект. · ${state.bsp.tris} треуг.`;status(`<b>${name}</b>: BSP загружена. Голубые — NPC, зелёные — предметы, розовые кольца — места нападения диких фей.`)}catch(e){state.bsp=null;$('bspInfo').textContent='BSP недоступен: '+e.message;console.warn(e);status(`<b>${name}:</b> 3D-карта не загружена — ${e.message}. Если data_0.pak лежит отдельно, нажмите «Выбрать data_0.pak».`);drawMap()}}
+async function loadBspForScene(name){
+  $('bspInfo').textContent='Загрузка BSP…';
+  try{
+    let bytes;
+    const misc=state.sceneBytes?ZEE.parseMisc(state.sceneBytes):null;
+    const internal=(misc&&misc.sceneFile?misc.sceneFile:'').replace(/\0+$/,'').trim();
+    const baseFromFile=name.replace(/\.scn$/i,'');
+    const candidates=[internal,baseFromFile].filter(Boolean).map(x=>String(x).replace(/\\/g,'/').split('/').pop().replace(/\.(?:scn|bsp)$/i,''));
+    const unique=[...new Set(candidates.map(x=>x.toLowerCase()))];
+    const directEntry=[...state.files.entries()].find(([k])=>unique.some(b=>k.toLowerCase()===b+'.bsp'));
+    if(directEntry) bytes=new Uint8Array(await directEntry[1].arrayBuffer());
+    else if(state.pak){
+      let lastErr=null;
+      for(const candidate of candidates){
+        try{bytes=await ZBSP.bspFromPak(state.pak,candidate);break}catch(e){lastErr=e}
+      }
+      if(!bytes) throw lastErr||new Error('BSP не найден в PAK');
+    } else throw new Error('нет BSP/data_0.pak');
+    state.bsp=ZBSP.parseBSP(bytes);if(!state.viewer)state.viewer=new ZBSP.Viewer($('worldCanvas'),$('mapCanvas'));state.viewer.setGeometry(state.bsp);drawMap();$('bspInfo').textContent=`${state.bsp.sectors} сект. · ${state.bsp.tris} треуг.${internal&&internal.toLowerCase()!==baseFromFile.toLowerCase()?' · '+internal:''}`;status(`<b>${name}</b>: BSP загружена. Голубые — NPC, зелёные — предметы, розовые кольца — места нападения диких фей.`)}catch(e){state.bsp=null;$('bspInfo').textContent='BSP недоступен: '+e.message;console.warn(e);status(`<b>${name}:</b> 3D-карта не загружена — ${e.message}. Если data_0.pak лежит отдельно, нажмите «Выбрать data_0.pak».`);drawMap()}}
 function refreshScene(){try{const nv=ZEE.placementsFromScene(state.sceneBytes,state.catalog),iv=ZEE.itemsFromScene(state.sceneBytes),wv=ZEE.wildFromScene(state.sceneBytes);state.view={...nv,placements:nv.placements,items:iv.items,wilds:wv.wilds,itemSections:iv,wildSections:wv};state._counts.set(state.sceneName,{npc:nv.placements.length,items:iv.items.length,wild:wv.wilds.length});$('sceneTitle').textContent=state.sceneName;$('sceneInfo').textContent=`${nv.placements.length} NPC · ${iv.items.length} предметов · ${wv.wilds.length} мест диких фей`;state.selected=null;$('saveScn').disabled=false;$('placeNpcBtn').disabled=false;$('placeItemBtn').disabled=false;$('placeWildBtn').disabled=false;$('addItemCoords').disabled=false;$('addWildCoords').disabled=false;$('deleteBtn').disabled=true;$('applyPlacement').disabled=true;$('deleteItem').disabled=true;$('applyItem').disabled=true;$('deleteWild').disabled=true;$('applyWild').disabled=true;drawMap();updateDebug();renderSceneList()}catch(e){status(`<b>${state.sceneName}:</b> ${e.message}`);console.error(e)}}
 
 function undoStack(){if(!state.sceneName)return[];if(!state.undoByScene.has(state.sceneName))state.undoByScene.set(state.sceneName,[]);return state.undoByScene.get(state.sceneName)}

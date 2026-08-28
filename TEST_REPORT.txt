@@ -31,3 +31,10 @@ PAK/BSP:
 - data_0.pak can now be selected independently from the SCN/FBS folder
 - BSP loader first checks directly selected BSP files, then selected data_0.pak
 - UI reports the actual loader error instead of only "BSP unavailable"
+
+
+v0.4.1 BSP name resolution:
+- md_Doommine.scn [Misc].sceneFile = md_0004
+- data_0.pak contains ..\RESOURCES\WORLDS\MD_0004.BSP (confirmed)
+- sc_0231.scn [Misc].sceneFile = sc_0231
+- data_0.pak contains ..\RESOURCES\WORLDS\SC_0231.BSP (confirmed)
