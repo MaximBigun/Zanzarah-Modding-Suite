@@ -119,7 +119,7 @@
   }
 
   const ITEMS = [
-    [0,'Малый бальзам'],[1,'Средний бальзам'],[2,'Большой бальзам'],[3,'Лекарственные травы'],[4,'Деньги эльфов'],[5,'Тестовый амулет'],[6,'Кристалл'],[7,'Лекарство'],[10,'Клевер'],[13,'Золотая морковь'],[17,'Серебряный шар'],[18,'Золотой шар'],[19,'Хрустальный шар'],[21,'Ключ от подземелья'],[28,'Руна возврата'],[29,'Руна Сада фей'],[30,'Руна Тиралина'],[31,'Руна Данмора'],[32,'Руна Башни гномов'],[33,'Руна пещер'],[34,'Руна Ледяного мира'],[35,'Руна Царства облаков'],[36,'Руна Царства тьмы'],[37,'Руна дома'],[38,'Руна леса II'],[39,'Руна болота II'],[40,'Горная руна II'],[41,'Руна пещеры II'],[42,'Руна неба II'],[43,'Тёмная руна II'],[44,'Карта Воздуха'],[45,'Карта Земли'],[46,'Карта Огня'],[47,'Карта Природы'],[48,'Карта Пси-магии'],[51,'Эволюционный камень Воздуха'],[52,'Эволюционный камень Огня'],[53,'Эволюционный камень Природы'],[60,'Мана'],[70,'Инструменты гномов']
+    [0,'Малый бальзам'],[1,'Средний бальзам'],[2,'Большой бальзам'],[3,'Лекарственные травы'],[4,'1 монета фей'],[5,'Тестовый амулет'],[6,'Кристалл'],[7,'Лекарство'],[8,'Рог фей'],[9,'Амулет опыта'],[10,'Клевер'],[11,'Тестовый амулет (Tinezard)'],[12,'Зарезервированная магическая карта'],[13,'Золотая морковь'],[14,'Зарезервированная магическая карта'],[15,'Морская раковина'],[16,'Мешок пикси'],[17,'Серебряный шар'],[18,'Золотой шар'],[19,'Хрустальный шар'],[20,'Чесночный распылитель'],[21,'Ключ от катакомб'],[22,'Тяжёлый железный ключ'],[23,'Ключ хранителя пикси'],[24,'Ключ от дома Руфуса'],[25,'Ключ от фабрики гномов'],[26,'Посох власти Квинлина'],[27,'Ключ от ратуши'],[28,'Руна возврата'],[29,'Руна Сада фей'],[30,'Руна Тиралина'],[31,'Руна Данмора'],[32,'Руна Башни гномов'],[33,'Руна мира пещер'],[34,'Руна Ледяного мира'],[35,'Руна Царства облаков'],[36,'Руна Царства теней'],[37,'Руна коттеджа'],[38,'Руна леса II'],[39,'Руна болота II'],[40,'Руна гор II'],[41,'Руна пещеры II'],[42,'Руна неба II'],[43,'Тёмная руна II'],[44,'Карта фей Воздуха'],[45,'Карта фей Земли'],[46,'Карта фей Огня'],[47,'Карта фей Природы'],[48,'Карта фей Пси-магии'],[49,'Зарезервированная магическая карта'],[50,'Зарезервированная магическая карта'],[51,'Эволюционная магия Воздуха'],[52,'Эволюционная магия Огня'],[53,'Эволюционная магия Природы'],[54,'Элементальный ключ Огня'],[55,'Элементальный ключ Воздуха'],[56,'Элементальный ключ Природы'],[57,'Элементальный ключ Земли'],[58,'Книга фей'],[59,'Сумка фей'],[60,'Зелье маны'],[61,'Формирующая магия'],[62,'Карта Сада фей'],[63,'Карта Зачарованного леса'],[64,'Карта Горного мира'],[65,'Карта Тёмного болота'],[66,'Карта Царства теней'],[67,'Карта Царства облаков'],[68,'Зарезервированная карта'],[69,'Зарезервированная карта'],[70,'Инструменты гномов'],[71,'Красный костяной ключ'],[72,'Зелёный костяной ключ'],[73,'Синий костяной ключ']
   ].map(([id,name])=>({id,name,model:'itm'+String(id).padStart(3,'0')}));
   const ITEM_BY_MODEL=new Map(ITEMS.map(x=>[x.model.toLowerCase(),x]));
   function itemsFromScene(bytes){
@@ -266,6 +266,11 @@
 
 
   const WILD_UID = 0x902391A4;
+  // ii4 у wild-trigger — НЕ прямой ID феи. Это индекс таблицы/пула встреч (0..33).
+  // Пул 3 подтверждён игровым наблюдением для sc_0203: Tinefol + Pfoe.
+  const WILD_POOLS = Array.from({length:34},(_,id)=>({id,name:`Пул ${id}`,fairies:[],confirmed:false}));
+  WILD_POOLS[3]={id:3,name:'Пул 3: Tinefol / Pfoe',fairies:[57,50],confirmed:true};
+  const WILD_POOL_BY_ID = new Map(WILD_POOLS.map(x=>[x.id,x]));
   function wildFromScene(bytes){
     const tr=parseTriggers(bytes), sc=parseSceneItems(bytes);
     if(!tr||!sc) return {triggers:tr,scene:sc,wilds:[]};
@@ -275,8 +280,8 @@
       if(si.i2!==4) continue;
       const t=trByIdx.get(si.i1);
       if(!t||t.type!==1||t.ii!==8||(t.ii1>>>0)!==WILD_UID) continue;
-      const fairy=FAIRY_BY_ID.get(t.ii4);
-      out.push({kind:'wild',sceneItem:si,trigger:t,fairyId:t.ii4,fairy,name:fairy?fairy.name:`Fairy ${t.ii4}`,position:t.vv,chance:t.ii3,radius:t.int,rawMode:t.ii2});
+      const pool=WILD_POOL_BY_ID.get(t.ii4)||{id:t.ii4,name:`Пул ${t.ii4}`,fairies:[],confirmed:false};
+      out.push({kind:'wild',sceneItem:si,trigger:t,poolId:t.ii4,pool,fairyId:t.ii4,name:pool.name,position:t.vv,chance:t.ii3,radius:t.int,rawMode:t.ii2});
     }
     return {triggers:tr,scene:sc,wilds:out};
   }
@@ -303,5 +308,5 @@
 
   function hex32(v){ return (v>>>0).toString(16).toUpperCase().padStart(8,'0'); }
 
-  return {FAIRIES,FAIRY_BY_ID,ITEMS,ITEM_BY_MODEL,WILD_UID,Reader,Writer,parseIndex,parseDatabase,serializeDatabase,buildNpcCatalog,teamFromEntry,setTeam,parseTriggers,parseMisc,parseSceneItems,parseModelsV3,parseBehaviours,patchScene,placementsFromScene,addPlacement,updatePlacement,deletePlacement,itemsFromScene,addItem,updateItem,deleteItem,wildFromScene,addWild,updateWild,deleteWild,hex32};
+  return {FAIRIES,FAIRY_BY_ID,ITEMS,ITEM_BY_MODEL,WILD_UID,WILD_POOLS,WILD_POOL_BY_ID,Reader,Writer,parseIndex,parseDatabase,serializeDatabase,buildNpcCatalog,teamFromEntry,setTeam,parseTriggers,parseMisc,parseSceneItems,parseModelsV3,parseBehaviours,patchScene,placementsFromScene,addPlacement,updatePlacement,deletePlacement,itemsFromScene,addItem,updateItem,deleteItem,wildFromScene,addWild,updateWild,deleteWild,hex32};
 });
