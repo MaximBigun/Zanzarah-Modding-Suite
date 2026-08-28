@@ -254,7 +254,44 @@
     tr.items=tr.items.filter(x=>x.idx!==idx); sc.items=sc.items.filter(x=>!(x.i2===4&&x.i1===idx&&x.s===placement.sceneItem.s)); return patchScene(bytes,tr,sc);
   }
 
+
+  const WILD_UID = 0x902391A4;
+  function wildFromScene(bytes){
+    const tr=parseTriggers(bytes), sc=parseSceneItems(bytes);
+    if(!tr||!sc) return {triggers:tr,scene:sc,wilds:[]};
+    const trByIdx=new Map(tr.items.map(t=>[t.idx,t]));
+    const out=[];
+    for(const si of sc.items){
+      if(si.i2!==4) continue;
+      const t=trByIdx.get(si.i1);
+      if(!t||t.type!==1||t.ii!==8||(t.ii1>>>0)!==WILD_UID) continue;
+      const fairy=FAIRY_BY_ID.get(t.ii4);
+      out.push({kind:'wild',sceneItem:si,trigger:t,fairyId:t.ii4,fairy,name:fairy?fairy.name:`Fairy ${t.ii4}`,position:t.vv,chance:t.ii3,radius:t.int,rawMode:t.ii2});
+    }
+    return {triggers:tr,scene:sc,wilds:out};
+  }
+  function addWild(bytes,params,prototype){
+    const tr=parseTriggers(bytes), sc=parseSceneItems(bytes); if(!tr||!sc) throw new Error('В сцене нет Triggers/Scene');
+    const used=new Set(tr.items.map(x=>x.idx)); let idx=0; while(used.has(idx)) idx++;
+    const p=prototype ? JSON.parse(JSON.stringify(prototype)) : {type:1,someFlag:0,v:{x:0,y:-0.2,z:1},ii:8,ii1:WILD_UID,ii2:0,ii3:50,ii4:0,s:'',int:5};
+    const t={idx,type:1,someFlag:p.someFlag||0,v:p.v||{x:0,y:-0.2,z:1},ii:8,ii1:WILD_UID,ii2:params.rawMode!==undefined?+params.rawMode:(p.ii2||0),ii3:+params.chance,ii4:+params.fairyId,s:p.s||'',vv:{x:+params.position.x,y:+params.position.y,z:+params.position.z},int:+params.radius};
+    tr.items.push(t); sc.items.push({s:'',i1:idx,i2:4});
+    return patchScene(bytes,tr,sc);
+  }
+  function updateWild(bytes,wild,params){
+    const tr=parseTriggers(bytes), sc=parseSceneItems(bytes); const t=tr.items.find(x=>x.idx===wild.trigger.idx);
+    if(!t) throw new Error('Точка дикой феи не найдена после повторного чтения');
+    t.vv={x:+params.position.x,y:+params.position.y,z:+params.position.z}; t.ii4=+params.fairyId; t.ii3=+params.chance; t.int=+params.radius;
+    if(params.rawMode!==undefined) t.ii2=+params.rawMode;
+    return patchScene(bytes,tr,sc);
+  }
+  function deleteWild(bytes,wild){
+    const tr=parseTriggers(bytes), sc=parseSceneItems(bytes), idx=wild.trigger.idx;
+    tr.items=tr.items.filter(x=>x.idx!==idx); sc.items=sc.items.filter(x=>!(x.i2===4&&x.i1===idx));
+    return patchScene(bytes,tr,sc);
+  }
+
   function hex32(v){ return (v>>>0).toString(16).toUpperCase().padStart(8,'0'); }
 
-  return {FAIRIES,FAIRY_BY_ID,ITEMS,ITEM_BY_MODEL,Reader,Writer,parseIndex,parseDatabase,serializeDatabase,buildNpcCatalog,teamFromEntry,setTeam,parseTriggers,parseSceneItems,parseModelsV3,parseBehaviours,patchScene,placementsFromScene,addPlacement,updatePlacement,deletePlacement,itemsFromScene,addItem,updateItem,deleteItem,hex32};
+  return {FAIRIES,FAIRY_BY_ID,ITEMS,ITEM_BY_MODEL,WILD_UID,Reader,Writer,parseIndex,parseDatabase,serializeDatabase,buildNpcCatalog,teamFromEntry,setTeam,parseTriggers,parseSceneItems,parseModelsV3,parseBehaviours,patchScene,placementsFromScene,addPlacement,updatePlacement,deletePlacement,itemsFromScene,addItem,updateItem,deleteItem,wildFromScene,addWild,updateWild,deleteWild,hex32};
 });

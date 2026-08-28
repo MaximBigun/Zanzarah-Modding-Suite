@@ -1,4 +1,4 @@
-Zanzarah World Editor v0.3 — test report
+Zanzarah World Editor v0.4 — test report
 
 FBS/NPC regression:
 - _fb0x05: 211 entries, binary roundtrip OK
@@ -6,24 +6,28 @@ FBS/NPC regression:
 - NPC placements matched to FBS: 261
 - NPC add/delete smoke test: OK
 
-Item/collectable validation:
-- scenes parsed for Models_v3 + Behaviours + Scene: 258/258
-- collectable behaviours linked to ITM models: 688
-- scenes containing collectables: 74
-- observed collectable behaviour types: 1000, 1001, 1002
-- important direct model mappings confirmed from scene model names / item table:
-  itm003 = item 3, medicinal herbs
-  itm004 = item 4, elf money
-  itm017 = item 17, silver sphere
-  itm018 = item 18, gold sphere
-  itm019 = item 19, crystal sphere
-  itm060 = item 60, mana
-- item add -> reparse -> delete smoke test: 258/258
-- after add/delete, every tested SCN returned byte-for-byte to its original content: 258/258
+Wild fairy attack zones:
+- exact selector: Trigger type=1, ii=8, ii1=0x902391A4 (_WildWizform)
+- existing wild attack zones found: 342
+- scenes containing wild attack zones: 56
+- fairy ID read from ii4
+- chance exposed from ii3
+- radius exposed from trigger float/int field used by this trigger format
+- add -> reparse -> delete smoke test: 258/258
+- after add/delete, every tested SCN returned byte-for-byte to original: 258/258
 
-PAK/BSP validation:
-- original data_0.pak size: 774,465,076 bytes
-- entries: 9,549
-- BSP resources: 261
-- ITMxxx DFF models used by item selector verified present in PAK
-- BSP ray-picking uses the actual parsed triangle mesh, not a 2D coordinate approximation
+Items/collectables (v0.3 regression):
+- collectable objects found: 688
+- scenes containing collectables: 74
+- item add/delete binary smoke test previously passed: 258/258
+
+Undo:
+- before every add operation, the full current SCN byte buffer is snapshotted
+- supports NPC, item, and wild-fairy-zone additions
+- restores exact pre-add bytes, then reparses the scene
+- maximum history: 50 additions per currently opened scene
+
+PAK/BSP:
+- data_0.pak can now be selected independently from the SCN/FBS folder
+- BSP loader first checks directly selected BSP files, then selected data_0.pak
+- UI reports the actual loader error instead of only "BSP unavailable"
