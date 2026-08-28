@@ -1,22 +1,20 @@
-Zanzarah Enemy Editor v0.1 — validation report
+Zanzarah Enemy Editor v0.2 — test report
 
-Source test data:
-- _fb0x05.fbs: 211 entries
-- SCN archive: 258 scenes
+SCN/FBS regression:
+- _fb0x05: 211 entries, binary roundtrip OK
+- scenes parsed: 258/258
+- NPC placements matched to FBS: 261
+- add/delete smoke test: OK
 
-Checks performed:
-1. _fb0x05 parse -> serialize without edits:
-   binary-identical: YES
-2. Every SCN: parse Triggers + Scene -> serialize without edits:
-   258 / 258 parsed successfully
-   binary-identical: 258 / 258
-3. NPC links found through Scene(type=4) -> Trigger(type=2) -> ii1 UID -> _fb0x05:
-   261 placements
-4. Structural mutation smoke test on every SCN:
-   add NPC placement -> parse -> change NPC/position -> parse -> delete -> compare original
-   passed: 258 / 258
-   after add/change/delete original binary restored exactly: 258 / 258
-5. FBS team edit test:
-   W.<fairyId>.<slot>.<level> changed, serialized and parsed back successfully.
-
-This validates the editor's binary read/write path against the supplied game files. It does not guarantee gameplay semantics for every possible duplicated NPC script/state combination; keep backups.
+PAK/BSP validation on uploaded original data_0.pak:
+- PAK size: 774,465,076 bytes
+- entries: 9,549
+- BSP resources found: 261
+- SC_0231.BSP found in RESOURCES\\WORLDS
+- extracted SC_0231 RenderWare WORLD payload: 808,828 bytes
+- world sectors declared: 21
+- world sectors parsed: 21
+- vertices declared/parsed: 15,914
+- triangles declared/parsed: 10,666
+- geometry bounds: X 106.705..213.410, Y 34.350..68.701, Z 82.266..164.531
+- known NPC coordinates (e.g. nq3005 X119/Y43/Z127) fall inside these BSP bounds.
