@@ -1,0 +1,4 @@
+Format research reference: kabbi/zanzarah-tools
+https://github.com/kabbi/zanzarah-tools
+License: MIT (repository archived read-only in 2022).
+This editor is a new implementation of the relevant FBS/SCN parsing and writing logic for the focused enemy-editing workflow.

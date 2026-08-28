@@ -1,0 +1,22 @@
+Zanzarah Enemy Editor v0.1 — validation report
+
+Source test data:
+- _fb0x05.fbs: 211 entries
+- SCN archive: 258 scenes
+
+Checks performed:
+1. _fb0x05 parse -> serialize without edits:
+   binary-identical: YES
+2. Every SCN: parse Triggers + Scene -> serialize without edits:
+   258 / 258 parsed successfully
+   binary-identical: 258 / 258
+3. NPC links found through Scene(type=4) -> Trigger(type=2) -> ii1 UID -> _fb0x05:
+   261 placements
+4. Structural mutation smoke test on every SCN:
+   add NPC placement -> parse -> change NPC/position -> parse -> delete -> compare original
+   passed: 258 / 258
+   after add/change/delete original binary restored exactly: 258 / 258
+5. FBS team edit test:
+   W.<fairyId>.<slot>.<level> changed, serialized and parsed back successfully.
+
+This validates the editor's binary read/write path against the supplied game files. It does not guarantee gameplay semantics for every possible duplicated NPC script/state combination; keep backups.
