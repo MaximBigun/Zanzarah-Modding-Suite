@@ -244,7 +244,43 @@
     target._modifiedString=s+lines.join('\n')+(lines.length?'\n':'');
   }
 
-  function buildNpcCatalog(db){ return db.entries.map((entry,index)=>({index,uid:entry.uid>>>0,name:internalName(entry),team:teamFromEntry(entry),entry})).filter(x=>x.name); }
+  function cloneDbField(f){
+    const c={...f};
+    if(f.raw)c.raw=f.raw.slice();
+    if(f.data)c.data=f.data.slice();
+    return c;
+  }
+  function cloneDbEntry(entry){ return {uid:entry.uid>>>0,fields:entry.fields.map(cloneDbField)}; }
+  function nextCustomShadowName(db){
+    const used=new Set(db.entries.map(internalName));
+    for(let i=1;i<1000;i++){ const name=`_CustomShadowElf_${String(i).padStart(2,'0')}`; if(!used.has(name))return name; }
+    throw new Error('Не удалось подобрать имя для Custom Shadow Elf');
+  }
+  function nextCustomShadowUid(db){
+    const used=new Set(db.entries.map(e=>e.uid>>>0));
+    // Собственный диапазон редактора. UID нужен только как связка FBS <-> SCN.
+    for(let uid=0xE5000001;uid<=0xE500FFFF;uid++)if(!used.has(uid>>>0))return uid>>>0;
+    throw new Error('Закончился диапазон UID для Custom Shadow Elf');
+  }
+  function createCustomShadowElf(db,team){
+    const base=db.entries.find(e=>internalName(e)==='_ShadowElf');
+    if(!base)throw new Error('В _fb0x05.fbs не найден оригинальный _ShadowElf');
+    const entry=cloneDbEntry(base), name=nextCustomShadowName(db), uid=nextCustomShadowUid(db);
+    entry.uid=uid;
+    const nameField=fieldByColumn(entry,19);
+    if(!nameField||nameField.type!==0)throw new Error('У _ShadowElf не найдено внутреннее имя (column 19)');
+    nameField._modifiedString=name;
+    // Ключевое отличие от оригинального _ShadowElf: удаляем динамические U/n-блоки
+    // из Script2 и превращаем запись в обычного NPC с фиксированной W-командой.
+    const script2=fieldByColumn(entry,25);
+    if(!script2||script2.type!==0)throw new Error('У _ShadowElf не найден Script2 (column 25)');
+    script2._modifiedString='C.u002s02m\n';
+    setTeam(entry,team||[]);
+    db.entries.push(entry);
+    return {index:db.entries.length-1,uid,name,team:teamFromEntry(entry),entry,isCustomShadowElf:true};
+  }
+
+  function buildNpcCatalog(db){ return db.entries.map((entry,index)=>{const name=internalName(entry);return {index,uid:entry.uid>>>0,name,team:teamFromEntry(entry),entry,isCustomShadowElf:/^_CustomShadowElf_\d+$/i.test(name)}}).filter(x=>x.name); }
   function placementsFromScene(bytes,catalog){
     const tr=parseTriggers(bytes), sc=parseSceneItems(bytes); if(!tr||!sc) return {triggers:tr,scene:sc,placements:[]};
     const byUid=new Map(catalog.map(n=>[n.uid>>>0,n])); const trByIdx=new Map(tr.items.map(t=>[t.idx,t])); const out=[];
@@ -471,5 +507,5 @@
 
   function hex32(v){ return (v>>>0).toString(16).toUpperCase().padStart(8,'0'); }
 
-  return {FAIRIES,FAIRY_BY_ID,ITEMS,ITEM_BY_MODEL,WILD_UID,WILD_POOLS,WILD_POOL_BY_ID,CUSTOM_POOL_IDS,wildLevelRange,defaultCustomPools,isOriginalZanthp,hasCustomPoolPatch,readZanthpCustomPools,patchZanthpCustomPools,Reader,Writer,parseIndex,parseDatabase,serializeDatabase,buildNpcCatalog,teamFromEntry,setTeam,parseTriggers,parseMisc,parseSceneItems,parseModelsV3,parseBehaviours,patchScene,placementsFromScene,addPlacement,updatePlacement,deletePlacement,itemsFromScene,addItem,addItems,updateItem,deleteItem,wildFromScene,addWild,updateWild,deleteWild,hex32};
+  return {FAIRIES,FAIRY_BY_ID,ITEMS,ITEM_BY_MODEL,WILD_UID,WILD_POOLS,WILD_POOL_BY_ID,CUSTOM_POOL_IDS,wildLevelRange,defaultCustomPools,isOriginalZanthp,hasCustomPoolPatch,readZanthpCustomPools,patchZanthpCustomPools,Reader,Writer,parseIndex,parseDatabase,serializeDatabase,buildNpcCatalog,teamFromEntry,setTeam,createCustomShadowElf,parseTriggers,parseMisc,parseSceneItems,parseModelsV3,parseBehaviours,patchScene,placementsFromScene,addPlacement,updatePlacement,deletePlacement,itemsFromScene,addItem,addItems,updateItem,deleteItem,wildFromScene,addWild,updateWild,deleteWild,hex32};
 });
