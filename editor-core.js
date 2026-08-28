@@ -144,6 +144,19 @@
     behaviours.items.push({type:1000,modelId:idx}); scene.items.push({s:'',i1:idx,i2:3});
     return patchItemSections(bytes,models,behaviours,scene);
   }
+  function addItems(bytes,item,position,prototype,count=1){
+    const models=parseModelsV3(bytes), behaviours=parseBehaviours(bytes), scene=parseSceneItems(bytes); if(!models||!behaviours||!scene) throw new Error('В сцене нет Models_v3/Behaviours/Scene');
+    count=Math.max(1,Math.min(99,Math.floor(+count||1)));
+    const p=cloneModelPrototype(prototype), fileName=item.model||('itm'+String(item.id).padStart(3,'0'));
+    const used=new Set(models.items.map(x=>x.idx));
+    let cursor=0;
+    for(let n=0;n<count;n++){
+      while(used.has(cursor))cursor++; const idx=cursor++; used.add(idx);
+      models.items.push({idx,fileName,position:{x:+position.x,y:+position.y,z:+position.z},rotation:{...p.rotation},scaleX:p.scaleX,scaleY:p.scaleY,scaleZ:p.scaleZ,color:Uint8Array.from(p.color),i1:p.i1,i15:p.i15,i2:p.i2});
+      behaviours.items.push({type:1000,modelId:idx}); scene.items.push({s:'',i1:idx,i2:3});
+    }
+    return patchItemSections(bytes,models,behaviours,scene);
+  }
   function updateItem(bytes,placed,item,position){
     const models=parseModelsV3(bytes), behaviours=parseBehaviours(bytes), scene=parseSceneItems(bytes); const idx=placed.model.idx, m=models.items.find(x=>x.idx===idx); if(!m) throw new Error('Предмет не найден после повторного чтения');
     m.position={x:+position.x,y:+position.y,z:+position.z}; if(item) m.fileName=item.model||('itm'+String(item.id).padStart(3,'0'));
@@ -458,5 +471,5 @@
 
   function hex32(v){ return (v>>>0).toString(16).toUpperCase().padStart(8,'0'); }
 
-  return {FAIRIES,FAIRY_BY_ID,ITEMS,ITEM_BY_MODEL,WILD_UID,WILD_POOLS,WILD_POOL_BY_ID,CUSTOM_POOL_IDS,wildLevelRange,defaultCustomPools,isOriginalZanthp,hasCustomPoolPatch,readZanthpCustomPools,patchZanthpCustomPools,Reader,Writer,parseIndex,parseDatabase,serializeDatabase,buildNpcCatalog,teamFromEntry,setTeam,parseTriggers,parseMisc,parseSceneItems,parseModelsV3,parseBehaviours,patchScene,placementsFromScene,addPlacement,updatePlacement,deletePlacement,itemsFromScene,addItem,updateItem,deleteItem,wildFromScene,addWild,updateWild,deleteWild,hex32};
+  return {FAIRIES,FAIRY_BY_ID,ITEMS,ITEM_BY_MODEL,WILD_UID,WILD_POOLS,WILD_POOL_BY_ID,CUSTOM_POOL_IDS,wildLevelRange,defaultCustomPools,isOriginalZanthp,hasCustomPoolPatch,readZanthpCustomPools,patchZanthpCustomPools,Reader,Writer,parseIndex,parseDatabase,serializeDatabase,buildNpcCatalog,teamFromEntry,setTeam,parseTriggers,parseMisc,parseSceneItems,parseModelsV3,parseBehaviours,patchScene,placementsFromScene,addPlacement,updatePlacement,deletePlacement,itemsFromScene,addItem,addItems,updateItem,deleteItem,wildFromScene,addWild,updateWild,deleteWild,hex32};
 });
