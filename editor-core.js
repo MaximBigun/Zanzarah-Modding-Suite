@@ -266,18 +266,65 @@
 
 
   const WILD_UID = 0x902391A4;
-  // ii4 у wild-trigger — НЕ прямой ID феи. Это индекс таблицы/пула встреч (0..33).
-  // Составы ниже подтверждены игровыми наблюдениями пользователя на конкретных SCN.
-  const WILD_POOLS = Array.from({length:34},(_,id)=>({id,name:`Пул ${id}`,fairies:[],confirmed:false,levelRange:null}));
-  WILD_POOLS[0] ={id:0, name:'Пул 0: Worgot / Blumella',                fairies:[9,26],   confirmed:true,levelRange:'~1–3'};
-  WILD_POOLS[1] ={id:1, name:'Пул 1: Corgot / Lana',                    fairies:[10,75],  confirmed:true,levelRange:'~8–10'};
-  WILD_POOLS[3] ={id:3, name:'Пул 3: Tinefol / Pfoe',                   fairies:[57,50],  confirmed:true,levelRange:null};
-  WILD_POOLS[8] ={id:8, name:'Пул 8: Goop / Gera',                      fairies:[64],     confirmed:true,levelRange:'~18–24',note:'ID Gera пока не сопоставлен с базой фей'};
-  WILD_POOLS[9] ={id:9, name:'Пул 9: Tadana / Goop',                    fairies:[6,64],   confirmed:true,levelRange:'~18–24'};
-  WILD_POOLS[10]={id:10,name:'Пул 10: Tadana / Amnis / Ceramnis',       fairies:[6,24,25],confirmed:true,levelRange:'~30–42'};
-  WILD_POOLS[11]={id:11,name:'Пул 11: Vesbat',                           fairies:[20],      confirmed:true,levelRange:'~1–3'};
-  WILD_POOLS[25]={id:25,name:'Пул 25: Greezloc / Glacess',              fairies:[36,52],   confirmed:true,levelRange:'~32–42'};
-  WILD_POOLS[26]={id:26,name:'Пул 26: Rasrow / Skelbo',                 fairies:[15,37],   confirmed:true,levelRange:'~18–25'};
+  // ii4 у wild-trigger — индекс encounter-пула (0..33).
+  // Таблица ниже статически извлечена из zanthp.exe, функция 0x00476102.
+  // Каждый элемент slots — отдельная запись в списке выбора; повторы дают больший вес.
+  // levelParam — внутренний параметр M. Игра вычисляет q=floor(M/4),
+  // internalLevel=(M-q)+random(q), а отображаемый уровень равен internalLevel-1.
+  const WILD_POOL_RAW = [
+    {id:0,  slots:[9,26],          levelParam:5},
+    {id:1,  slots:[10,75],         levelParam:13},
+    {id:2,  slots:[57,1,0],        levelParam:36},
+    {id:3,  slots:[50,57],         levelParam:42},
+    {id:4,  slots:[18,10],         levelParam:13},
+    {id:5,  slots:[9,19],          levelParam:24},
+    {id:6,  slots:[18,0],          levelParam:42},
+    {id:7,  slots:[23],            levelParam:13},
+    {id:8,  slots:[64,23],         levelParam:24},
+    {id:9,  slots:[64,6],          levelParam:36},
+    {id:10, slots:[6,6,24,25],     levelParam:42},
+    {id:11, slots:[20,20],         levelParam:5},
+    {id:12, slots:[62,20],         levelParam:13},
+    {id:13, slots:[4,21],          levelParam:24},
+    {id:14, slots:[3,62],          levelParam:42},
+    {id:15, slots:[27,28],         levelParam:13},
+    {id:16, slots:[27,47],         levelParam:24},
+    {id:17, slots:[27,47],         levelParam:36},
+    {id:18, slots:[46,46,27],      levelParam:42},
+    {id:19, slots:[12,13],         levelParam:36},
+    {id:20, slots:[41,40],         levelParam:36},
+    {id:21, slots:[54,40],         levelParam:42},
+    {id:22, slots:[55,55],         levelParam:42},
+    {id:23, slots:[31,32,31],      levelParam:54},
+    {id:24, slots:[34,35],         levelParam:36},
+    {id:25, slots:[36,52],         levelParam:42},
+    {id:26, slots:[15,37],         levelParam:24},
+    {id:27, slots:[15,37],         levelParam:36},
+    {id:28, slots:[15,53,69],      levelParam:42},
+    {id:29, slots:[69,70,29],      levelParam:54},
+    {id:30, slots:[65],            levelParam:36},
+    {id:31, slots:[65],            levelParam:42},
+    {id:32, slots:[65,66,29],      levelParam:54},
+    {id:33, slots:[72,72,73,43],   levelParam:54}
+  ];
+  function wildLevelRange(levelParam){
+    const q=Math.floor(levelParam/4), min=levelParam-q-1, max=levelParam-2;
+    return min===max?String(min):`${min}–${max}`;
+  }
+  function makeWildPool(raw){
+    const counts=new Map(); for(const id of raw.slots)counts.set(id,(counts.get(id)||0)+1);
+    const weights=[...counts.entries()].map(([id,count])=>({
+      id,count,probability:count/raw.slots.length,
+      name:FAIRY_BY_ID.get(id)?.name||`Fairy ${id}`
+    }));
+    const species=weights.map(x=>x.name).join(' / ');
+    return {
+      id:raw.id,name:`Пул ${raw.id}: ${species}`,slots:[...raw.slots],fairies:weights.map(x=>x.id),weights,
+      confirmed:true,levelParam:raw.levelParam,levelRange:wildLevelRange(raw.levelParam),
+      source:'zanthp.exe 0x00476102'
+    };
+  }
+  const WILD_POOLS=WILD_POOL_RAW.map(makeWildPool);
   const WILD_POOL_BY_ID = new Map(WILD_POOLS.map(x=>[x.id,x]));
   function wildFromScene(bytes){
     const tr=parseTriggers(bytes), sc=parseSceneItems(bytes);

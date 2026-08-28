@@ -1,0 +1,38 @@
+Zanzarah: The Hidden Portal — Wild Encounter Pools 0..33
+Static decode source: zanthp.exe, function 0x00476102
+Repeated raw slots increase selection weight. Displayed level range is derived from the game level algorithm.
+
+Pool 00 | lvl 3     | Worgot (ID 9) 50% | Blumella (ID 26) 50% | raw=[9,26] | M=5
+Pool 01 | lvl 9–11  | Corgot (ID 10) 50% | Lana (ID 75) 50% | raw=[10,75] | M=13
+Pool 02 | lvl 26–34 | Tinefol (ID 57) 33.3% | Viteria (ID 1) 33.3% | Sillia (ID 0) 33.3% | raw=[57,1,0] | M=36
+Pool 03 | lvl 31–40 | Pfoe (ID 50) 50% | Tinefol (ID 57) 50% | raw=[50,57] | M=42
+Pool 04 | lvl 9–11  | Abery (ID 18) 50% | Corgot (ID 10) 50% | raw=[18,10] | M=13
+Pool 05 | lvl 17–22 | Worgot (ID 9) 50% | Abnobery (ID 19) 50% | raw=[9,19] | M=24
+Pool 06 | lvl 31–40 | Abery (ID 18) 50% | Sillia (ID 0) 50% | raw=[18,0] | M=42
+Pool 07 | lvl 9–11  | Cera (ID 23) 100% | raw=[23] | M=13
+Pool 08 | lvl 17–22 | Goop (ID 64) 50% | Cera (ID 23) 50% | raw=[64,23] | M=24
+Pool 09 | lvl 26–34 | Goop (ID 64) 50% | Tadana (ID 6) 50% | raw=[64,6] | M=36
+Pool 10 | lvl 31–40 | Tadana (ID 6) 50% | Amnis (ID 24) 25% | Ceramnis (ID 25) 25% | raw=[6,6,24,25] | M=42
+Pool 11 | lvl 3     | Vesbat (ID 20) 100% | raw=[20,20] | M=5
+Pool 12 | lvl 9–11  | JumJum (ID 62) 50% | Vesbat (ID 20) 50% | raw=[62,20] | M=13
+Pool 13 | lvl 17–22 | Gremor (ID 4) 50% | Stobat (ID 21) 50% | raw=[4,21] | M=24
+Pool 14 | lvl 31–40 | Grem (ID 3) 50% | JumJum (ID 62) 50% | raw=[3,62] | M=42
+Pool 15 | lvl 9–11  | Mencre (ID 27) 50% | Mensek (ID 28) 50% | raw=[27,28] | M=13
+Pool 16 | lvl 17–22 | Mencre (ID 27) 50% | Mentaur (ID 47) 50% | raw=[27,47] | M=24
+Pool 17 | lvl 26–34 | Mencre (ID 27) 50% | Mentaur (ID 47) 50% | raw=[27,47] | M=36
+Pool 18 | lvl 31–40 | Beltaur (ID 46) 66.7% | Mencre (ID 27) 33.3% | raw=[46,46,27] | M=42
+Pool 19 | lvl 26–34 | Airia (ID 12) 50% | Luria (ID 13) 50% | raw=[12,13] | M=36
+Pool 20 | lvl 26–34 | Gorael (ID 41) 50% | Sirael (ID 40) 50% | raw=[41,40] | M=36
+Pool 21 | lvl 31–40 | Sirella (ID 54) 50% | Sirael (ID 40) 50% | raw=[54,40] | M=42
+Pool 22 | lvl 31–40 | Dracwin (ID 55) 100% | raw=[55,55] | M=42
+Pool 23 | lvl 40–52 | Pix (ID 31) 66.7% | Ferix (ID 32) 33.3% | raw=[31,32,31] | M=54
+Pool 24 | lvl 26–34 | Feez (ID 34) 50% | Greez (ID 35) 50% | raw=[34,35] | M=36
+Pool 25 | lvl 31–40 | Greezloc (ID 36) 50% | Glacess (ID 52) 50% | raw=[36,52] | M=42
+Pool 26 | lvl 17–22 | Rasrow (ID 15) 50% | Skelbo (ID 37) 50% | raw=[15,37] | M=24
+Pool 27 | lvl 26–34 | Rasrow (ID 15) 50% | Skelbo (ID 37) 50% | raw=[15,37] | M=36
+Pool 28 | lvl 31–40 | Rasrow (ID 15) 33.3% | Akritar (ID 53) 33.3% | Manox (ID 69) 33.3% | raw=[15,53,69] | M=42
+Pool 29 | lvl 40–52 | Manox (ID 69) 33.3% | Turnox (ID 70) 33.3% | Violectra (ID 29) 33.3% | raw=[69,70,29] | M=54
+Pool 30 | lvl 26–34 | Minari (ID 65) 100% | raw=[65] | M=36
+Pool 31 | lvl 31–40 | Minari (ID 65) 100% | raw=[65] | M=42
+Pool 32 | lvl 40–52 | Minari (ID 65) 33.3% | Megari (ID 66) 33.3% | Violectra (ID 29) 33.3% | raw=[65,66,29] | M=54
+Pool 33 | lvl 40–52 | Lighane (ID 72) 50% | Driane (ID 73) 25% | Darbue (ID 43) 25% | raw=[72,72,73,43] | M=54
