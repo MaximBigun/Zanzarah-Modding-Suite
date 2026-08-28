@@ -10,7 +10,7 @@ Wild fairy attack zones:
 - exact selector: Trigger type=1, ii=8, ii1=0x902391A4 (_WildWizform)
 - existing wild attack zones found: 342
 - scenes containing wild attack zones: 56
-- fairy ID read from ii4
+- encounter pool ID read from ii4
 - chance exposed from ii3
 - radius exposed from trigger float/int field used by this trigger format
 - add -> reparse -> delete smoke test: 258/258

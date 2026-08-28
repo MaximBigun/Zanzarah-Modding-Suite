@@ -267,9 +267,17 @@
 
   const WILD_UID = 0x902391A4;
   // ii4 у wild-trigger — НЕ прямой ID феи. Это индекс таблицы/пула встреч (0..33).
-  // Пул 3 подтверждён игровым наблюдением для sc_0203: Tinefol + Pfoe.
-  const WILD_POOLS = Array.from({length:34},(_,id)=>({id,name:`Пул ${id}`,fairies:[],confirmed:false}));
-  WILD_POOLS[3]={id:3,name:'Пул 3: Tinefol / Pfoe',fairies:[57,50],confirmed:true};
+  // Составы ниже подтверждены игровыми наблюдениями пользователя на конкретных SCN.
+  const WILD_POOLS = Array.from({length:34},(_,id)=>({id,name:`Пул ${id}`,fairies:[],confirmed:false,levelRange:null}));
+  WILD_POOLS[0] ={id:0, name:'Пул 0: Worgot / Blumella',                fairies:[9,26],   confirmed:true,levelRange:'~1–3'};
+  WILD_POOLS[1] ={id:1, name:'Пул 1: Corgot / Lana',                    fairies:[10,75],  confirmed:true,levelRange:'~8–10'};
+  WILD_POOLS[3] ={id:3, name:'Пул 3: Tinefol / Pfoe',                   fairies:[57,50],  confirmed:true,levelRange:null};
+  WILD_POOLS[8] ={id:8, name:'Пул 8: Goop / Gera',                      fairies:[64],     confirmed:true,levelRange:'~18–24',note:'ID Gera пока не сопоставлен с базой фей'};
+  WILD_POOLS[9] ={id:9, name:'Пул 9: Tadana / Goop',                    fairies:[6,64],   confirmed:true,levelRange:'~18–24'};
+  WILD_POOLS[10]={id:10,name:'Пул 10: Tadana / Amnis / Ceramnis',       fairies:[6,24,25],confirmed:true,levelRange:'~30–42'};
+  WILD_POOLS[11]={id:11,name:'Пул 11: Vesbat',                           fairies:[20],      confirmed:true,levelRange:'~1–3'};
+  WILD_POOLS[25]={id:25,name:'Пул 25: Greezloc / Glacess',              fairies:[36,52],   confirmed:true,levelRange:'~32–42'};
+  WILD_POOLS[26]={id:26,name:'Пул 26: Rasrow / Skelbo',                 fairies:[15,37],   confirmed:true,levelRange:'~18–25'};
   const WILD_POOL_BY_ID = new Map(WILD_POOLS.map(x=>[x.id,x]));
   function wildFromScene(bytes){
     const tr=parseTriggers(bytes), sc=parseSceneItems(bytes);
@@ -281,7 +289,7 @@
       const t=trByIdx.get(si.i1);
       if(!t||t.type!==1||t.ii!==8||(t.ii1>>>0)!==WILD_UID) continue;
       const pool=WILD_POOL_BY_ID.get(t.ii4)||{id:t.ii4,name:`Пул ${t.ii4}`,fairies:[],confirmed:false};
-      out.push({kind:'wild',sceneItem:si,trigger:t,poolId:t.ii4,pool,fairyId:t.ii4,name:pool.name,position:t.vv,chance:t.ii3,radius:t.int,rawMode:t.ii2});
+      out.push({kind:'wild',sceneItem:si,trigger:t,poolId:t.ii4,pool,name:pool.name,position:t.vv,chance:t.ii3,radius:t.int,rawMode:t.ii2});
     }
     return {triggers:tr,scene:sc,wilds:out};
   }
@@ -289,14 +297,14 @@
     const tr=parseTriggers(bytes), sc=parseSceneItems(bytes); if(!tr||!sc) throw new Error('В сцене нет Triggers/Scene');
     const used=new Set(tr.items.map(x=>x.idx)); let idx=0; while(used.has(idx)) idx++;
     const p=prototype ? JSON.parse(JSON.stringify(prototype)) : {type:1,someFlag:0,v:{x:0,y:-0.2,z:1},ii:8,ii1:WILD_UID,ii2:0,ii3:50,ii4:0,s:'',int:5};
-    const t={idx,type:1,someFlag:p.someFlag||0,v:p.v||{x:0,y:-0.2,z:1},ii:8,ii1:WILD_UID,ii2:params.rawMode!==undefined?+params.rawMode:(p.ii2||0),ii3:+params.chance,ii4:+params.fairyId,s:p.s||'',vv:{x:+params.position.x,y:+params.position.y,z:+params.position.z},int:+params.radius};
+    const t={idx,type:1,someFlag:p.someFlag||0,v:p.v||{x:0,y:-0.2,z:1},ii:8,ii1:WILD_UID,ii2:params.rawMode!==undefined?+params.rawMode:(p.ii2||0),ii3:+params.chance,ii4:+(params.poolId!==undefined?params.poolId:params.fairyId),s:p.s||'',vv:{x:+params.position.x,y:+params.position.y,z:+params.position.z},int:+params.radius};
     tr.items.push(t); sc.items.push({s:'',i1:idx,i2:4});
     return patchScene(bytes,tr,sc);
   }
   function updateWild(bytes,wild,params){
     const tr=parseTriggers(bytes), sc=parseSceneItems(bytes); const t=tr.items.find(x=>x.idx===wild.trigger.idx);
     if(!t) throw new Error('Точка дикой феи не найдена после повторного чтения');
-    t.vv={x:+params.position.x,y:+params.position.y,z:+params.position.z}; t.ii4=+params.fairyId; t.ii3=+params.chance; t.int=+params.radius;
+    t.vv={x:+params.position.x,y:+params.position.y,z:+params.position.z}; t.ii4=+(params.poolId!==undefined?params.poolId:params.fairyId); t.ii3=+params.chance; t.int=+params.radius;
     if(params.rawMode!==undefined) t.ii2=+params.rawMode;
     return patchScene(bytes,tr,sc);
   }
