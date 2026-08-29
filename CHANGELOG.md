@@ -1,6 +1,8 @@
 # Zanzarah Modding Suite — Master Changelog
 
-This file is the repository-level project history. Per-version `CHANGELOG_vX.txt` files remain historical source material.
+**Canonical master changelog. Current through v0.8.7 EXP.**
+
+This is the single repository-level master changelog and must always be updated with every new ZMS version. Detailed historical per-version notes are archived under [`changelogs/`](changelogs/).
 
 ## v0.8.7 EXP
 - Custom Shadow Elf gameplay fix #2: base changed from `ns322a` to `ns321a`.
