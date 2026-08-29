@@ -1,0 +1,17 @@
+# User/game files and proprietary Zanzarah assets
+*.exe
+*.dll
+*.pak
+*.fbs
+*.scn
+*.bsp
+*.dff
+*.wav
+*.mp3
+
+# Local/editor state
+.DS_Store
+Thumbs.db
+node_modules/
+__pycache__/
+*.pyc
