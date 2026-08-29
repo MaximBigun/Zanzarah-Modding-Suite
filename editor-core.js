@@ -263,21 +263,28 @@
     throw new Error('Закончился диапазон UID для Custom Shadow Elf');
   }
   function createCustomShadowElf(db,team){
-    // Gameplay test v0.8.5 показал, что клон специального _ShadowElf без его U/n-логики
-    // спавнится как выбранная W-фея, а не как world-модель тёмного эльфа.
-    // Поэтому используем подтверждённый обычный shadow-elf NPC ns322a как визуальный/actor template.
-    const base=db.entries.find(e=>internalName(e)==='ns322a');
-    if(!base)throw new Error('В _fb0x05.fbs не найден шаблон Shadow Elf ns322a');
+    // v0.8.6 gameplay test: клон ns322a мог полностью исчезать в игре.
+    // Причина: ns322a содержит сюжетные/условные Script1/Script4, которые способны деактивировать actor.
+    // В качестве базы используем ns321a: это реально размещённый в SCN Shadow-Elf actor с тем же actor ref
+    // 0x97688F91 и минимальными скриптами без сюжетных условий.
+    const base=db.entries.find(e=>internalName(e)==='ns321a');
+    if(!base)throw new Error('В _fb0x05.fbs не найден безопасный шаблон Shadow Elf ns321a');
     const entry=cloneDbEntry(base), name=nextCustomShadowName(db), uid=nextCustomShadowUid(db);
     entry.uid=uid;
     const nameField=fieldByColumn(entry,19);
-    if(!nameField||nameField.type!==0)throw new Error('У шаблона ns322a не найдено внутреннее имя (column 19)');
+    if(!nameField||nameField.type!==0)throw new Error('У шаблона ns321a не найдено внутреннее имя (column 19)');
     nameField._modifiedString=name;
-    // ns322a уже имеет обычную C.u002s02m + W-команду и корректный набор actor scripts.
-    // Меняем только W-команду; неизвестные поля/скрипты шаблона сохраняем дословно.
+
+    // У ns321a Script2 содержит C.u003s03m + W.*. Для Custom Shadow Elf нужен вариант модели u002s02m.
+    // Очищаем только W/C в Script2, сохраняя общую структуру записи и actor reference.
+    const target=fieldByColumn(entry,25);
+    if(!target||target.type!==0)throw new Error('У шаблона ns321a не найден Script2 (column 25)');
+    let script=target._modifiedString!==undefined?target._modifiedString:target.string;
+    script=script.split(/\r?\n/).filter(x=>x && !/^W\.\d+\.\d+\.\d+\s*$/.test(x) && !/^C\.u\d+s\d+m\s*$/i.test(x)).join('\n');
+    target._modifiedString=(script?script+'\n':'')+'C.u002s02m\n';
     setTeam(entry,team||[]);
     db.entries.push(entry);
-    return {index:db.entries.length-1,uid,name,team:teamFromEntry(entry),entry,isCustomShadowElf:true,template:'ns322a'};
+    return {index:db.entries.length-1,uid,name,team:teamFromEntry(entry),entry,isCustomShadowElf:true,template:'ns321a'};
   }
 
   function buildNpcCatalog(db){ return db.entries.map((entry,index)=>{const name=internalName(entry);return {index,uid:entry.uid>>>0,name,team:teamFromEntry(entry),entry,isCustomShadowElf:/^_CustomShadowElf_\d+$/i.test(name)}}).filter(x=>x.name); }
@@ -296,9 +303,14 @@
     const used=new Set(tr.items.map(x=>x.idx)); let idx=0; while(used.has(idx)) idx++;
     const p=prototype ? JSON.parse(JSON.stringify(prototype)) : {type:2,someFlag:0,v:{x:0,y:0,z:1},ii:3,ii2:0,ii3:0,ii4:0,s:''};
     const radius=Math.max(0,+attackRadius||0), type=radius>0?1:2;
-    const t={idx,type,someFlag:p.someFlag||0,v:p.v||{x:0,y:0,z:1},ii:p.ii||3,ii1:npc.uid>>>0,ii2:p.ii2||0,ii3:p.ii3||0,ii4:p.ii4||0,s:p.s||'',vv:{x:+position.x,y:+position.y,z:+position.z}};
+    const isCustom=!!npc.isCustomShadowElf;
+    // Оригинальный ns321a, который реально размещён в sc_0611.scn, использует ii=3 / ii2=3.
+    // Для Custom Shadow Elf воспроизводим именно этот trigger profile вместо случайного prototype другой сущности.
+    const t={idx,type,someFlag:isCustom?0:(p.someFlag||0),v:isCustom?{x:0,y:0,z:1}:(p.v||{x:0,y:0,z:1}),ii:3,ii1:npc.uid>>>0,ii2:isCustom?3:(p.ii2||0),ii3:isCustom?0:(p.ii3||0),ii4:isCustom?0:(p.ii4||0),s:isCustom?'':(p.s||''),vv:{x:+position.x,y:+position.y,z:+position.z}};
     if(type===1)t.int=radius;
-    tr.items.push(t); sc.items.push({s:npc.name,i1:idx,i2:4});
+    // У большинства оригинальных NPC Scene.s пустой. Для custom actor также оставляем пустым,
+    // чтобы имя базы не интерпретировалось движком как scene/model token.
+    tr.items.push(t); sc.items.push({s:isCustom?'':npc.name,i1:idx,i2:4});
     return patchScene(bytes,tr,sc);
   }
   function updatePlacement(bytes, placement, npc, position, direction, attackRadius){

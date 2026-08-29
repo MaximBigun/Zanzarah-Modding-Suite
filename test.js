@@ -48,18 +48,20 @@ if(fs.existsSync(exePath)){
   console.log('custom EXE patch smoke',read[0],read[1],read[221],'count',read.length);
 }
 
-// v0.8.6 regression: Custom Shadow Elf must clone ns322a actor template, not special _ShadowElf.
+// v0.8.7 regression: Custom Shadow Elf uses directly placed ns321a actor template.
 {
   const fresh=Z.parseDatabase(dbBytes);
   const created=Z.createCustomShadowElf(fresh,[{fairyId:9,slot:0,level:20}]);
-  const base=fresh.entries.find(e=>e.fields.find(f=>f.column===19)?.string==='ns322a');
+  const base=fresh.entries.find(e=>(e.fields.find(f=>f.column===19)?._modifiedString||e.fields.find(f=>f.column===19)?.string)==='ns321a');
   const col=(e,c)=>e.fields.find(f=>f.column===c);
-  if(created.template!=='ns322a')throw new Error('Custom Shadow template is not ns322a');
-  if(col(created.entry,3)?.uid!==col(base,3)?.uid)throw new Error('Custom Shadow actor ref differs from ns322a');
-  if(!((col(created.entry,25)?._modifiedString||col(created.entry,25)?.string||'').includes('C.u002s02m')))throw new Error('Custom Shadow lost C.u002s02m');
+  if(created.template!=='ns321a')throw new Error('Custom Shadow template is not ns321a');
+  if(col(created.entry,3)?.uid!==col(base,3)?.uid)throw new Error('Custom Shadow actor ref differs from ns321a');
+  const script2=col(created.entry,25)?._modifiedString||col(created.entry,25)?.string||'';
+  if(!script2.includes('C.u002s02m'))throw new Error('Custom Shadow lost C.u002s02m');
+  if(script2.includes('C.u003s03m'))throw new Error('Custom Shadow retained ns321a C.u003s03m');
   const team=Z.teamFromEntry(created.entry);
   if(team.length!==1||team[0].fairyId!==9||team[0].level!==20)throw new Error('Custom Shadow team write mismatch');
-  console.log('custom shadow v0.8.6 template smoke',created.name,created.template,team);
+  console.log('custom shadow v0.8.7 template smoke',created.name,created.template,team);
 }
 
 // v0.8.6 regression: every newly added item is stored at input Y + 1.0.
@@ -78,7 +80,7 @@ if(fs.existsSync(exePath)){
   }
 }
 
-// v0.8.6 regression: hostile placement path for Custom Shadow Elf uses Trigger type=1 when radius=5.
+// v0.8.7 regression: Custom Shadow Elf placement reproduces ns321a trigger profile and hostile radius.
 {
   const scenePath=path.join(root,'sc_0231.scn');
   if(fs.existsSync(scenePath)){
@@ -90,6 +92,8 @@ if(fs.existsSync(exePath)){
     const out=Z.addPlacement(src,npc,{x:1,y:2,z:3},null,5);
     const found=Z.placementsFromScene(out,cat).placements.find(x=>x.npc?.uid===created.uid);
     if(!found||found.trigger.type!==1||Math.abs(found.attackRadius-5)>1e-6)throw new Error('Custom Shadow hostile placement mismatch');
-    console.log('custom shadow hostile smoke',found.trigger.type,found.attackRadius);
+    if(found.trigger.ii!==3||found.trigger.ii2!==3||found.trigger.ii3!==0||found.trigger.ii4!==0)throw new Error('Custom Shadow trigger profile mismatch');
+    if(found.sceneItem.s!=='')throw new Error('Custom Shadow Scene.s must be empty');
+    console.log('custom shadow hostile/profile smoke',found.trigger.type,found.attackRadius,'ii2',found.trigger.ii2,'sceneS',JSON.stringify(found.sceneItem.s));
   }
 }

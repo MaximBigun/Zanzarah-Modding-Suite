@@ -1,0 +1,51 @@
+Zanzarah World Editor v0.8.7 EXP
+================================
+
+CUSTOM SHADOW ELF — GAMEPLAY FIX #2
+------------------------------------
+Gameplay-тест v0.8.6: FAIL.
+Симптом: после создания и размещения Custom Shadow Elf в игре actor полностью отсутствовал.
+
+Новые выводы reverse engineering:
+- ns322a НЕ подходит как нейтральный шаблон для свободного размещения.
+- В его Script1/Script4 есть сюжетные условия/переходы, которые могут деактивировать actor вне родного сценария.
+- Найден более безопасный оригинальный шаблон ns321a.
+- ns321a реально размещён в sc_0611.scn.
+- ns321a использует тот же actor reference, что ns322a/_ShadowElf: 0x97688F91.
+- Его скрипты значительно проще: Script1/Script4 пустые, Script3 минимальный.
+- Оригинальный trigger ns321a в sc_0611 использует ii=3, ii2=3, ii3=0, ii4=0.
+
+Исправлено:
+1. createCustomShadowElf теперь клонирует ns321a вместо ns322a.
+2. Script2 очищается от старых C/W-команд и получает:
+   C.u002s02m
+   W.<fairyId>.<slot>.<level>
+3. Для Custom Shadow Elf addPlacement больше не наследует случайный trigger prototype другой сущности.
+4. Принудительно используется профиль:
+   ii=3
+   ii2=3
+   ii3=0
+   ii4=0
+   someFlag=0
+   trigger string=''
+5. Scene item string для Custom Shadow Elf теперь пустой.
+6. Hostile radius по умолчанию остаётся 5.0 (Trigger type=1).
+
+Предметы:
+- Автоматический Y + 1.0 сохранён без изменений.
+- Gameplay: монеты PASS, кристаллы PASS.
+- Остальные предметы продолжают тестироваться.
+
+Regression tests:
+- FBS round-trip PASS.
+- Custom Shadow template ns321a PASS.
+- actor ref 0x97688F91 preserved PASS.
+- C.u002s02m + W team PASS.
+- hostile Trigger type=1 radius 5 PASS.
+- trigger ii=3/ii2=3/ii3=0/ii4=0 PASS.
+- Scene.s='' PASS.
+- item Y+1 PASS.
+- Custom Pools 34..255 regression PASS.
+
+ВАЖНО:
+- Фактическое появление world-модели Shadow Elf и автонападение должны быть подтверждены новым gameplay-тестом v0.8.7.

@@ -1,47 +1,19 @@
-Zanzarah World Editor v0.4 — test report
+Zanzarah World Editor v0.8.7 EXP — regression report
+====================================================
+Automated tests executed: PASS
+- FBS round-trip
+- Original wild pools 0..33 decode
+- Custom Pools Patch v2 IDs 34, 35, 255 / metadata 222 entries
+- Custom Shadow Elf uses ns321a template
+- Shadow actor ref preserved
+- Script2 contains C.u002s02m and requested W team
+- Custom Shadow hostile placement type=1, radius=5
+- Custom Shadow trigger profile ii=3, ii2=3, ii3=0, ii4=0
+- Custom Shadow Scene.s empty
+- New item batch uses Y + 1.0
 
-FBS/NPC regression:
-- _fb0x05: 211 entries, binary roundtrip OK
-- scenes parsed for NPC: 258/258
-- NPC placements matched to FBS: 261
-- NPC add/delete smoke test: OK
-
-Wild fairy attack zones:
-- exact selector: Trigger type=1, ii=8, ii1=0x902391A4 (_WildWizform)
-- existing wild attack zones found: 342
-- scenes containing wild attack zones: 56
-- encounter pool ID read from ii4
-- chance exposed from ii3
-- radius exposed from trigger float/int field used by this trigger format
-- add -> reparse -> delete smoke test: 258/258
-- after add/delete, every tested SCN returned byte-for-byte to original: 258/258
-
-Items/collectables (v0.3 regression):
-- collectable objects found: 688
-- scenes containing collectables: 74
-- item add/delete binary smoke test previously passed: 258/258
-
-Undo:
-- before every add operation, the full current SCN byte buffer is snapshotted
-- supports NPC, item, and wild-fairy-zone additions
-- restores exact pre-add bytes, then reparses the scene
-- maximum history: 50 additions per currently opened scene
-
-PAK/BSP:
-- data_0.pak can now be selected independently from the SCN/FBS folder
-- BSP loader first checks directly selected BSP files, then selected data_0.pak
-- UI reports the actual loader error instead of only "BSP unavailable"
-
-
-v0.4.1 BSP name resolution:
-- md_Doommine.scn [Misc].sceneFile = md_0004
-- data_0.pak contains ..\RESOURCES\WORLDS\MD_0004.BSP (confirmed)
-- sc_0231.scn [Misc].sceneFile = sc_0231
-- data_0.pak contains ..\RESOURCES\WORLDS\SC_0231.BSP (confirmed)
-
-
-v0.4.2 BSP real-data test:
-SC_0231.BSP: 21 sectors, 10666 triangles, 15914 source vertices, RW 0x304 — OK
-MD_0004.BSP: 50 sectors, 6491 triangles, 10545 source vertices, RW 0x310 — OK
-Viewer overlay handler: fixed to this.o — OK
-World struct offsets: worldSectors +40, format +48 — OK
+Gameplay status:
+- Custom Shadow Elf v0.8.5: FAIL (world model replaced by W-fairy)
+- Custom Shadow Elf v0.8.6: FAIL (actor absent)
+- Custom Shadow Elf v0.8.7: PENDING
+- Item quantity: coins PASS, crystals PASS, other item types PENDING
