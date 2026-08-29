@@ -6,6 +6,8 @@ ZMS is a reverse-engineering and modding toolkit for **Zanzarah: The Hidden Port
 
 > This repository contains ZMS code, documentation, reverse-engineering notes and project history. It does **not** include original copyrighted game assets.
 
+> **Proprietary project:** public source visibility does **not** make ZMS open source. Redistribution, modified public builds, forks/derivative distributions and reuse of substantial ZMS code require prior written permission from the copyright holder. See [`LICENSE`](LICENSE).
+
 ## Current status
 
 Latest historical build: **v0.8.7 EXP**.
@@ -15,6 +17,7 @@ The reconstructed Git history preserves development from `v0.1` through `v0.8.7-
 - [Tags](https://github.com/MaximBigun/Zanzarah-Modding-Suite/tags)
 - [Release history](docs/releases/HISTORY.md)
 - [Master changelog](CHANGELOG.md)
+- [Detailed version changelogs](changelogs/)
 - [Release policy](docs/RELEASE_POLICY.md)
 - [Project structure](docs/PROJECT_STRUCTURE.md)
 
@@ -52,4 +55,8 @@ There is no standalone archived `v0.5.0` build.
 
 ## License
 
-No open-source license has been selected yet. Until a license is added, normal copyright applies to the ZMS source code and project materials.
+ZMS is **proprietary software** and is **not an open-source project**. Copyright © 2026 Maksym Bihun. All rights reserved.
+
+The repository may be publicly visible for transparency, development history, testing and reference, but public visibility does not grant permission to redistribute, republish, fork into a public derivative distribution, sell, repackage, or reuse substantial portions of ZMS in another product.
+
+See the full [`LICENSE`](LICENSE) for the exact terms.
