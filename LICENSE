@@ -1,0 +1,49 @@
+ZANZARAH MODDING SUITE — PROPRIETARY LICENSE
+
+Copyright (c) 2026 Maksym Bihun. All rights reserved.
+
+This software, source code, documentation, reverse-engineering notes, tools, scripts,
+and other original materials contained in the Zanzarah Modding Suite ("ZMS")
+repository are proprietary works of Maksym Bihun unless explicitly stated otherwise.
+
+PUBLIC VISIBILITY DOES NOT GRANT AN OPEN-SOURCE LICENSE.
+
+Permission is granted only to view the publicly accessible source code and
+documentation for informational, evaluation, testing, and personal reference
+purposes.
+
+Without prior written permission from Maksym Bihun, you may not:
+
+1. copy, redistribute, publish, mirror, sublicense, sell, rent, or otherwise
+   distribute ZMS or substantial portions of it;
+2. create, publish, or distribute modified versions, forks, derivative works,
+   repackaged builds, or competing distributions based on ZMS;
+3. use ZMS source code or substantial portions of its implementation in another
+   software product, service, toolkit, or commercial project;
+4. remove or alter copyright, authorship, attribution, project identity, release
+   integrity information, or other proprietary notices;
+5. represent an unofficial build, fork, modification, or derivative as an
+   official Zanzarah Modding Suite release;
+6. use the Zanzarah Modding Suite name, ZMS branding, or official-release marks
+   in a way that implies endorsement or authorship by the copyright holder.
+
+Personal execution of officially published ZMS builds for their intended purpose
+is permitted. Permission to contribute code to the repository does not transfer
+ownership of the existing project or grant redistribution rights unless separately
+agreed in writing.
+
+Third-party components, if any, remain subject to their own licenses and notices.
+Zanzarah: The Hidden Portal and all original game assets, names, trademarks, code,
+data, audio, artwork, and other game content belong to their respective rights
+holders. This license does not grant any rights to those third-party materials.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS FOR
+A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL THE COPYRIGHT HOLDER
+BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY ARISING FROM THE SOFTWARE OR
+ITS USE.
+
+Any rights not expressly granted in this license are reserved.
+
+For permission to redistribute, modify, integrate, publish, or otherwise use ZMS
+beyond the permissions above, obtain prior written authorization from Maksym Bihun.
