@@ -1,0 +1,186 @@
+ZANZARAH — SCN / _fb0x05 RESEARCH
+Обновлено для World Editor v0.8.14 EXP
+
+1. Видимые враги-эльфы
+
+Сравнение оригинальных сцен с двумя модами показывает, что видимый противник связывается со своей записью _fb0x05 через trigger:
+
+  Trigger type = 1 или 2
+  ii = 3
+  ii1 = UID записи из _fb0x05
+  ii2 / ii3 / ii4 = дополнительные параметры профиля сцены
+  vv = позиция
+  int = радиус нападения, когда type=1
+  Scene item: i2=4, i1=<trigger index>
+
+Для враждебных эльфов на карте особенно типична форма:
+
+  type=1
+  ii=3
+  ii1=<UID врага>
+  ii2=0
+  ii3=0
+  ii4=0
+  int=<радиус>
+
+Пример из оригинала, sc_1243.scn:
+  nq4001, UID 0x02989FB4
+  type=1, ii=3, ii2=0, ii3=0, ii4=0
+  радиусы встречаются 4.0 / 5.25 / 7.10
+
+Во втором моде те же позиции заменены на другие профили _fb0x05:
+  idx 37: nq4001 -> nq4004, UID 0x42E0D0B4
+  idx 38: nq4001 -> nq4003, UID 0x43575BB4
+
+При этом геометрия сцены и hostile trigger сохраняются, а команда боя берётся из W-команд новой записи _fb0x05.
+
+nq4004:
+  W.177.0.30
+  W.165.1.29
+  W.159.2.33
+  W.81.3.28
+  W.99.4.26
+
+nq4003:
+  W.93.0.27
+  W.100.1.24
+  W.165.2.23
+  W.128.3.25
+  W.147.4.29
+
+Это подтверждает цепочку:
+
+  SCN trigger ii=3 / ii1=UID
+        -> запись UID в _fb0x05
+        -> Script с W.<fairyId>.<slot>.<level>
+        -> команда фей противника
+
+2. Изменение уже существующих врагов
+
+Моды используют два практических подхода:
+- меняют ii1 у уже существующего trigger и направляют позицию на другой профиль _fb0x05;
+- оставляют тот же UID/профиль в сцене, но меняют W-команды соответствующей записи _fb0x05.
+
+Поэтому редактор v0.8.13 позволяет выбрать уже размещённого врага и непосредственно изменить W-команду его профиля.
+
+3. Новые видимые враги
+
+В первом моде найдены сцены, где количество ii=3 врагов увеличено. Например sc_1432.scn: в оригинале 2 распознанных NPC ii=3, в моде 4. Мод также переводит отдельные исходные wild-trigger позиции в ii=3 профили. Это показывает, что движок допускает дополнительные visible-enemy trigger в SCN.
+
+Для собственного нового эльфа редактор использует безопасный эльфийский actor-шаблон из _fb0x05 (приоритет ns321a / _ShadowElf-подобный actor 0x97688F91), клонирует запись, выдаёт новый UID ...14, заменяет W-команду и ставит его в SCN как type=1 / ii=3.
+
+Точный игровой результат для НОВОЙ master-record + нового SCN trigger ещё должен быть подтверждён тестом v0.8.13.
+
+4. Дикие феи — отдельный механизм
+
+Проверено игровым тестом:
+  type=1
+  ii=8
+  ii1=<UID _WildWizform-derived профиля>
+
+создаёт непосредственно нападение дикой феи, а не видимого эльфа.
+Ручной диапазон 10–15 в тесте дал 12 уровень, бой прошёл нормально.
+
+Поэтому ii=8 больше не используется редактором как способ создания видимого эльфа. Он оставлен только для wild encounter и ручных диапазонов уровней.
+
+
+5. Почему CustomElf v0.8.13 не нападал — найдено структурное отличие
+
+Игровой тест подтвердил: изменение W-команды существующего nq4001 работает, но новые профили, клонированные от ns321a, не запускали бой.
+
+Сравнение полных записей _fb0x05 показало:
+  ns321a:
+    Script1 (col 24) = пусто
+    Script3 (col 26) = +.0.1
+    Script4 (col 27) = пусто
+
+  nq4001 (рабочий hostile-враг):
+    Script1 содержит &.1000 / !.89D4E405.0 / &.1006 / *.-1.0
+    Script3 содержит $ / X / Y.40 / E / 7 / K
+    Script4 содержит &.1000 / !.326BB885.0 / [ / -
+
+Добавленные мододелами боевые DED* эльфы имеют ту же общую структуру: непустой start/dialogue script, combat script и post-battle script.
+
+Следовательно, v0.8.14 больше НЕ использует ns321a как основу нового атакующего врага. Новый враг клонируется только из battle-ready профиля (по умолчанию nq4001), при этом сохраняются его start/dialogue/combat/post-battle команды, а редактор заменяет W-команду пользователя.
+
+SCN для нового врага остаётся в форме, подтверждённой рабочими nq4001:
+  type=1, ii=3, ii1=<новый UID>, ii2=0, ii3=0, ii4=0, radius>0.
+
+Это наиболее вероятное исправление причины, по которой v0.8.13 создавал видимый, но не атакующий CustomElf. Требуется игровой тест.
+
+============================================================
+GROUP BATTLES / n COMMAND — v0.8.18
+============================================================
+Observed n commands in original _fb0x05:
+  _ShadowElf: n.0.11.1 / n.1.25.1 / n.2.35.1 / n.2.45.1 / n.2.60.1
+Observed in supplied mods include n.2.40.1, n.2.30.1, n.0.5.1.
+User gameplay testing confirms command n is related to the number of enemy opponents that can participate simultaneously, with battles of up to 3 opponents observed. From the original sequence n.0 / n.1 / n.2 we infer the mapping 0 -> 1, 1 -> 2, 2 -> 3 opponents, but this exact argument mapping is still marked as an inference until the new group constructor is gameplay-tested.
+The exact semantics of arguments 2 and 3 are not fully decoded. v0.8.18 uses the highest leader-fairy level as argument 2 and keeps argument 3 = 1, matching all observed examples.
+
+For custom grouped visible enemies v0.8.18 keeps each participant as its own _fb0x05 profile with its own explicit W deck. Only the leader receives n.(N-1).L.1. This exact combination must be gameplay-tested.
+
+DECK SIZE RESEARCH
+Static scan performed over original _fb0x05 and the two supplied modded _fb0x05 databases:
+- maximum observed W slot: 4;
+- W commands using slot >= 5: 0.
+So all observed explicit decks are slots 0..4 = at most 5 fairies per opponent/deck.
+Large enemy battles in public Global Mod documentation are described as multiple separate decks/reinforcements, including 25 total enemy fairies, rather than >5 fairies in one deck.
+Conclusion for current editor: keep 5 as the safe per-opponent limit; scale difficulty through multiple opponents/decks instead of unverified W slot 5+.
+
+
+2026-09-02 — v0.8.19 gameplay result and follow-up
+- A group made as 3 nearby physical NPC profiles (leader type=1, supporters type=2), each with its own W deck, loads correctly but only the leader participates in battle. Nearby W profiles are therefore not automatically merged into one battle.
+- Observed n profiles in original/mod data use n without W in the active battle block. Mod1 nq4001 is a strong concrete example: C.u003s03m + n.2.30.1 with the normal battle lifecycle scripts around it.
+- Alternative deck layout is confirmed in supplied mod profiles such as DEDrk1: L.3.0, labels $.0/$.1/$.2, each with up to five W slots, K.3 jumps to $.3. This is interpreted as multiple alternative decks for one NPC, not 15 simultaneous fairies.
+- No W slot >4 was found in original or the two supplied mod _fb0x05 databases.
+- Global Mod documentation describes battles with 6–25 enemy fairies and reinforcements where each additional fairy can arrive in a separate deck. This supports multi-deck/multi-opponent scaling rather than extending one deck past five slots.
+
+
+=== 2026-09-02: sc_0611 group battle / P command ===
+Gameplay-confirmed by user: starting battle with ns3219 also brings ns321a into the same battle.
+Original sc_0611:
+- ns3219 UID 0x11428094, Trigger 80, type=2, ii=3, ii2=0.
+- ns321a UID 0x6ECEDA24, Trigger 81, type=2, ii=3, ii2=3.
+- helper Trigger 82, type=2, ii=5, ii1=0.
+ns3219 Script1 contains:
+  &.3000
+  P.82.6eceda24
+  [.0.82
+  Q.10
+  e.5
+This proves the first argument of P is a scene Trigger index for an ii=5 helper marker. The second argument is an _fb0x05 NPC UID.
+Other original examples confirm the same relationship: nq8001 uses P.53.<UID> / P.54.<UID> while scene triggers 53 and 54 are ii=5 markers.
+Working hypothesis implemented in v0.8.21: one physical support NPC (ii=3, ii2=3) + one ii=5 marker per support; leader Script1 links them with P.<markerIdx>.<supportUID>.
+
+
+2026-09-02 — sc_0203 five-opponent original group
+--------------------------------------------------
+Original sc_0203 contains one ns3224 and four physical ns3225 placements.
+Triggers 58..62 are all ii=3/type=2. The ns3225 triggers use ii2=ii3=ii4=0 and Scene layers 2 and 4.
+ns3224 Script2: O.3 + explicit W team; Script1 contains *.-1.1.
+ns3225 Script1 is empty; Script2 is O.3 / ].0 / W...; Script3 is +.0.2.
+No P link or ii=5 helper marker is required in this five-opponent example.
+This structure is the basis of World Editor v0.8.22 group construction.
+
+
+[2026-09-02] Group battle refinement: sc_0203 / sc_2420 / sc_3406
+----------------------------------------------------------------
+sc_0203: leader ns3224 + 4x ns3225. All physical triggers type=2, ii=3, ii2=0. Scene layers 2 and 4. ns3224 Script1 ends with &.3001 / *.-1.1; Script2 O.3 + W. ns3225 has empty Script1, Script2 O.3 / ].0 / W, Script3 +.0.2.
+sc_2420 independently confirms leader/support shape: ns3200 leader (*.-1.1, O.4) + 2x ns3201 support (O.3 / ].0 / W, Script3 +.-1.2). Exact meaning of first arg in + is still unknown.
+sc_3406 shows P is scene-specific positioning/choreography: ns3213 references ii=5 markers for ns3214, ns3215 and also itself. Thus P is not treated as a generic 'add battle participant' command. v0.8.21 gameplay further supports this: second NPC entered combat, but camera jumped and helper was not cleaned up after victory.
+v0.8.24 generic group builder therefore uses the simpler confirmed sc_0203 lifecycle and no P/n.
+
+
+2026-09-02 — v0.8.24 crash comparison / column 3 finding
+-----------------------------------------------------------
+User-provided crashing output: modified _fb0x05.fbs + sc_2421.scn from v0.8.24.
+The generated SCN trigger indexes were structurally valid and did not collide.
+Generated CustomElf leader/support profiles all still had nq4001 column 3 = 0x97688F91.
+Direct profile comparison in the same FBS:
+- nq4001: col3 0x97688F91
+- ns3224: col3 0x0648ACA1
+- ns3225: col3 0xB18BDDB1
+Apart from internal name, column 3 and Script1..5, no other field differences were found between nq4001 and ns3224/ns3225.
+Therefore v0.8.26 keeps nq4001 as the generic independent lifecycle but transplants the original group-role column 3 reference: leader <- ns3224, support <- ns3225.
+This is still a gameplay hypothesis until the scene loads successfully.
+3D point dragging introduced in v0.8.24 was reported by the user to work well and is retained.
