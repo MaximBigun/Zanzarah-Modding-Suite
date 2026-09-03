@@ -19,11 +19,13 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y gcc-mingw-w64-i686
       - name: Build native x86 DLL
         run: |
-          i686-w64-mingw32-gcc -Os -s -shared -o tools/zms_language_exp41.dll tools/zms_language_exp41.c -luser32 -lkernel32
+          i686-w64-mingw32-gcc -Os -s -shared -Wl,--add-stdcall-alias -o tools/zms_language_exp41.dll tools/zms_language_exp41.c -luser32 -lkernel32
           file tools/zms_language_exp41.dll
           sha256sum tools/zms_language_exp41.dll
+          echo '--- exported zms hooks ---'
+          i686-w64-mingw32-objdump -p tools/zms_language_exp41.dll | grep -E 'Zms(DialogBoxParamA|CreateDialogParamA)' || true
       - name: Upload EXP4.1 payload
         uses: actions/upload-artifact@v4
         with:
-          name: zms-language-exp41
+          name: zms-language-exp45
           path: tools/zms_language_exp41.dll
