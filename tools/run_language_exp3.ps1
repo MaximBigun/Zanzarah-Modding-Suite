@@ -9,8 +9,9 @@ $ErrorActionPreference = 'Stop'
 $Exe = (Resolve-Path $Exe).Path
 if ([string]::IsNullOrWhiteSpace($GameRoot)) { $GameRoot = Split-Path (Split-Path $Exe -Parent) -Parent }
 $GameRoot = (Resolve-Path $GameRoot).Path
-if ([string]::IsNullOrWhiteSpace($Launcher)) { $Launcher = Join-Path $GameRoot 'zanzarah.exe' }
+if ([string]::IsNullOrWhiteSpace($Launcher)) { $Launcher = Join-Path $GameRoot 'System\zanzarah.exe' }
 $Launcher = (Resolve-Path $Launcher).Path
+$LauncherDir = Split-Path $Launcher -Parent
 
 $DataDir = Join-Path $GameRoot 'Data'
 $LocDir = Join-Path $GameRoot 'Localization'
@@ -113,7 +114,7 @@ if(-not ('ZmsComboBridgeExp3V4' -as [type])) { Add-Type -TypeDefinition $src -La
 
 Write-Host "Patched game EXE: $Exe"
 Write-Host "Starting launcher: $Launcher"
-$launch=Start-Process -FilePath $Launcher -WorkingDirectory $GameRoot -PassThru
+$launch=Start-Process -FilePath $Launcher -WorkingDirectory $LauncherDir -PassThru
 Write-Host 'Waiting for Zanzarah Startup Menu...'
 
 $selected=if($active -eq 'ru'){1}else{0}; $last=$selected
