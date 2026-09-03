@@ -50,7 +50,7 @@ if((U16 $b $opt)-ne 0x10b){throw 'EXP4 requires PE32 x86 launcher.'}
 $ib=U32 $b ($opt+28);$sa=U32 $b ($opt+32);$fa=U32 $b ($opt+36);$oep=U32 $b ($opt+16);$hdr=U32 $b ($opt+60);$imp=U32 $b ($opt+104);$st=$opt+$os
 $secs=@();for($i=0;$i-lt$n;$i++){$o=$st+$i*40;$nm=([Text.Encoding]::ASCII.GetString($b,$o,8)).Trim([char]0);$secs+=[pscustomobject]@{O=$o;N=$nm;VS=U32 $b ($o+8);VA=U32 $b ($o+12);RS=U32 $b ($o+16);RP=U32 $b ($o+20)}}
 foreach($s in $secs){if($s.N-eq'.zms4'){throw 'Already patched. Use -Restore first.'}}
-function R2O([uint32]$r){foreach($s in $secs){$sp=[Math]::Max([uint32]$s.VS,[uint32]$s.RS);if($r-ge$s.VA-and$r-lt($s.VA+$sp)){return[int]($s.RP+$r-$s.VA)}};if($r-lt$hdr){return[int]$r};throw ('Unmapped RVA 0x{0:X8}'-f$r)}
+function R2O([uint32]$r){foreach($s in $secs){$sp=[Math]::Max([uint32]$s.VS,[uint32]$s.RS);if($r-ge$s.VA-and$r-lt($s.VA+$sp)){return [int]($s.RP+$r-$s.VA)}};if($r-lt$hdr){return [int]$r};throw ('Unmapped RVA 0x{0:X8}'-f$r)}
 $iat=$null;$io=R2O $imp
 for($d=$io;;$d+=20){$orig=U32 $b $d;$nr=U32 $b ($d+12);$first=U32 $b ($d+16);if($orig-eq0-and$nr-eq0-and$first-eq0){break};$tr=if($orig){$orig}else{$first};$to=R2O $tr;for($j=0;;$j++){$v=U32 $b ($to+$j*4);if(!$v){break};if(($v-band0x80000000)-eq0){$hn=R2O $v;if((AZ $b ($hn+2))-eq'LoadLibraryA'){$iat=[uint32]($first+$j*4);break}}};if($null-ne$iat){break}}
 if($null-eq$iat){throw 'LoadLibraryA import not found.'}
