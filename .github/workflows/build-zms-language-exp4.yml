@@ -1,0 +1,36 @@
+name: Build ZMS Language EXP4
+
+on:
+  push:
+    paths:
+      - 'tools/zms_language_exp4.c'
+      - '.github/workflows/build-zms-language-exp4.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install MinGW x86
+        run: sudo apt-get update && sudo apt-get install -y gcc-mingw-w64-i686
+      - name: Build native x86 DLL
+        run: |
+          i686-w64-mingw32-gcc -Os -s -shared -o tools/zms_language_exp4.dll tools/zms_language_exp4.c -luser32 -lkernel32
+          file tools/zms_language_exp4.dll
+          sha256sum tools/zms_language_exp4.dll
+      - name: Encode DLL for repository delivery
+        run: base64 -w0 tools/zms_language_exp4.dll > tools/zms_language_exp4.dll.b64
+      - name: Commit generated payload
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tools/zms_language_exp4.dll.b64
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Build EXP4 native language payload'
+          git push
