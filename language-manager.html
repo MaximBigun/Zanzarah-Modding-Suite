@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Zanzarah Language Manager EXP01</title>
+<style>
+:root{font-family:Segoe UI,Arial,sans-serif;color:#e8edf4;background:#111821}*{box-sizing:border-box}body{margin:0;background:#111821}header{padding:18px 22px;background:#182331;border-bottom:1px solid #314255}h1{margin:0;font-size:22px}h1 span{font-size:13px;color:#91a4b8}main{max-width:900px;margin:24px auto;padding:0 18px}.card{background:#182331;border:1px solid #314255;border-radius:10px;padding:18px;margin-bottom:16px}.row{display:flex;gap:12px;align-items:end;flex-wrap:wrap}label{display:flex;flex-direction:column;gap:6px;min-width:220px;flex:1}select,input,button{font:inherit}select,input{background:#0f1720;color:#e8edf4;border:1px solid #42566d;border-radius:6px;padding:9px 10px}.btn{border:1px solid #4b627a;background:#25364a;color:#fff;border-radius:6px;padding:9px 14px;cursor:pointer}.btn:hover{filter:brightness(1.12)}.primary{background:#1769aa}.success{background:#1d7a49}.danger{background:#913f3f}.btn:disabled{opacity:.45;cursor:not-allowed}.status{padding:12px 14px;border-radius:7px;background:#0f1720;border:1px solid #314255;line-height:1.5}.mini{color:#9fb0c1;font-size:13px;line-height:1.45}.lang-list{display:grid;gap:8px;margin-top:12px}.lang{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:10px 12px;border:1px solid #314255;border-radius:7px;background:#121c27}.active{border-color:#45a56f;background:#14281e}.tag{font-size:12px;padding:3px 7px;border-radius:10px;background:#30445b}.ok{color:#74daa0}.warn{color:#ffcf70}.err{color:#ff8585}code{background:#0e151d;padding:2px 5px;border-radius:4px}
+</style>
+</head>
+<body>
+<header><h1>Zanzarah Language Manager <span>EXP01</span></h1></header>
+<main>
+<section class="card">
+  <h2>1. Папка игры</h2>
+  <p class="mini">Менеджер работает через File System Access API. Откройте корень Zanzarah с правом записи. Оригинальные FBS автоматически сохраняются как пакет <b>English</b> при первой инициализации.</p>
+  <button id="openGame" class="btn primary">Открыть папку Zanzarah</button>
+  <div id="status" class="status" style="margin-top:12px">Папка игры ещё не выбрана.</div>
+</section>
+
+<section class="card">
+  <h2>2. Языки</h2>
+  <div class="row">
+    <label>Активный язык
+      <select id="language" disabled></select>
+    </label>
+    <button id="apply" class="btn success" disabled>Применить язык</button>
+  </div>
+  <div id="langs" class="lang-list"></div>
+</section>
+
+<section class="card">
+  <h2>3. Добавить язык</h2>
+  <p class="mini">Выберите комплект <code>_fb0x00.fbs … _fb0x06.fbs</code>. Файлы будут один раз скопированы в <code>Localization\&lt;id&gt;\</code>. После этого язык появится в списке и будет переключаться одной кнопкой.</p>
+  <div class="row">
+    <label>ID языка<input id="langId" value="ru" maxlength="12" placeholder="ru"></label>
+    <label>Название<input id="langName" value="Русский" maxlength="40" placeholder="Русский"></label>
+  </div>
+  <div style="margin-top:12px">
+    <label class="btn">Выбрать 7 FBS<input id="packFiles" type="file" accept=".fbs" multiple hidden></label>
+    <span id="packInfo" class="mini">Файлы не выбраны</span>
+  </div>
+  <button id="installPack" class="btn" style="margin-top:12px" disabled>Установить языковой пакет</button>
+</section>
+
+<section class="card">
+  <h2>Как это работает</h2>
+  <div class="mini">
+    <p><code>Localization\en\</code> — сохранённый оригинальный Steam-комплект.</p>
+    <p><code>Localization\ru\</code>, <code>Localization\de\</code> и т. д. — дополнительные пакеты.</p>
+    <p>При «Применить язык» выбранные FBS копируются в игровую папку <code>Data\</code>. EXE не патчится.</p>
+  </div>
+</section>
+</main>
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+const FBS=Array.from({length:7},(_,i)=>`_fb0x0${i}.fbs`);
+let game=null,dataDir=null,locDir=null,selectedFiles=[];
+const manifestName='manifest.json';
+
+function setStatus(html,kind=''){const s=$('status');s.innerHTML=html;s.className='status '+kind}
+async function exists(dir,name){try{return await dir.getFileHandle(name),true}catch(e){if(e.name==='NotFoundError')return false;throw e}}
+async function readBytes(dir,name){const h=await dir.getFileHandle(name),f=await h.getFile();return new Uint8Array(await f.arrayBuffer())}
+async function writeBytes(dir,name,bytes){const h=await dir.getFileHandle(name,{create:true}),w=await h.createWritable();await w.write(bytes);await w.close()}
+async function copyFile(srcDir,dstDir,name){await writeBytes(dstDir,name,await readBytes(srcDir,name))}
+async function writeJson(dir,name,obj){await writeBytes(dir,name,new TextEncoder().encode(JSON.stringify(obj,null,2)))}
+async function readJson(dir,name){try{const f=await (await dir.getFileHandle(name)).getFile();return JSON.parse(await f.text())}catch{return null}}
+async function getDir(root,name,create=false){return await root.getDirectoryHandle(name,{create})}
+
+async function findDataDir(root){
+  for(const name of ['Data','data','DATA']){try{return await root.getDirectoryHandle(name)}catch{}}
+  throw new Error('Не найдена папка Data в корне игры.');
+}
+async function validateFbs(dir){const missing=[];for(const n of FBS)if(!await exists(dir,n))missing.push(n);return missing}
+
+async function ensureEnglishBackup(){
+ const en=await getDir(locDir,'en',true);
+ const missing=await validateFbs(en);
+ if(!missing.length){if(!await exists(en,manifestName))await writeJson(en,manifestName,{format:1,id:'en',name:'English',files:FBS});return false}
+ const gameMissing=await validateFbs(dataDir);if(gameMissing.length)throw new Error('В Data отсутствуют: '+gameMissing.join(', '));
+ for(const n of FBS)await copyFile(dataDir,en,n);
+ await writeJson(en,manifestName,{format:1,id:'en',name:'English',files:FBS,source:'original-game-backup'});
+ return true;
+}
+
+async function listLanguages(){
+ const out=[];
+ for await(const [id,h] of locDir.entries()){
+  if(h.kind!=='directory')continue;
+  const missing=await validateFbs(h);if(missing.length)continue;
+  const m=await readJson(h,manifestName)||{};
+  out.push({id,name:m.name||id,dir:h});
+ }
+ out.sort((a,b)=>a.name.localeCompare(b.name));return out;
+}
+
+async function currentLanguage(){const cfg=await readJson(locDir,'active-language.json');return cfg?.language||'en'}
+async function refresh(){
+ const langs=await listLanguages(),active=await currentLanguage(),sel=$('language');sel.innerHTML='';
+ for(const l of langs){const o=document.createElement('option');o.value=l.id;o.textContent=l.name;sel.appendChild(o)}
+ if(langs.some(x=>x.id===active))sel.value=active;
+ sel.disabled=!langs.length;$('apply').disabled=!langs.length;
+ const box=$('langs');box.innerHTML='';
+ for(const l of langs){const d=document.createElement('div');d.className='lang '+(l.id===active?'active':'');d.innerHTML=`<div><b>${escapeHtml(l.name)}</b> <span class="tag">${escapeHtml(l.id)}</span></div><div class="${l.id===active?'ok':''}">${l.id===active?'активен':'установлен'}</div>`;box.appendChild(d)}
+}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+
+$('openGame').onclick=async()=>{
+ try{
+  if(!window.showDirectoryPicker)throw new Error('Нужен Chrome/Edge с поддержкой File System Access API.');
+  game=await window.showDirectoryPicker({mode:'readwrite'});dataDir=await findDataDir(game);locDir=await getDir(game,'Localization',true);
+  const created=await ensureEnglishBackup();
+  await refresh();
+  setStatus(`${created?'<b>English backup создан.</b> ':''}Папка игры открыта. Языковой менеджер готов.`, 'ok');
+ }catch(e){if(e?.name==='AbortError')return;console.error(e);setStatus('<b>Ошибка:</b> '+escapeHtml(e.message),'err')}
+};
+
+$('packFiles').onchange=e=>{
+ selectedFiles=[...(e.target.files||[])];const names=new Set(selectedFiles.map(f=>f.name.toLowerCase()));const missing=FBS.filter(n=>!names.has(n));
+ $('packInfo').textContent=missing.length?'Не хватает: '+missing.join(', '):'Комплект из 7 FBS готов';
+ $('installPack').disabled=!!missing.length||!game;
+};
+
+$('installPack').onclick=async()=>{
+ try{
+  if(!game)throw new Error('Сначала откройте папку игры.');
+  const id=$('langId').value.trim().toLowerCase();const name=$('langName').value.trim();
+  if(!/^[a-z0-9_-]{2,12}$/.test(id))throw new Error('ID: 2–12 символов a-z, 0-9, _ или -.');
+  if(id==='en')throw new Error('ID en зарезервирован для оригинального Steam-комплекта.');
+  if(!name)throw new Error('Введите название языка.');
+  const map=new Map(selectedFiles.map(f=>[f.name.toLowerCase(),f]));for(const n of FBS)if(!map.has(n))throw new Error('Не хватает '+n);
+  const dir=await getDir(locDir,id,true);
+  for(const n of FBS){const f=map.get(n),bytes=new Uint8Array(await f.arrayBuffer());await writeBytes(dir,n,bytes)}
+  await writeJson(dir,manifestName,{format:1,id,name,files:FBS,installedAt:new Date().toISOString()});
+  await refresh();$('language').value=id;setStatus(`Язык <b>${escapeHtml(name)}</b> установлен. Теперь нажмите «Применить язык».`,'ok');
+ }catch(e){console.error(e);setStatus('<b>Ошибка установки:</b> '+escapeHtml(e.message),'err')}
+};
+
+$('apply').onclick=async()=>{
+ try{
+  if(!game)throw new Error('Сначала откройте папку игры.');const id=$('language').value,dir=await getDir(locDir,id);const missing=await validateFbs(dir);if(missing.length)throw new Error('Пакет повреждён: '+missing.join(', '));
+  for(const n of FBS)await copyFile(dir,dataDir,n);
+  await writeJson(locDir,'active-language.json',{language:id,appliedAt:new Date().toISOString()});
+  await refresh();const m=await readJson(dir,manifestName)||{};setStatus(`Применён язык <b>${escapeHtml(m.name||id)}</b>. Теперь запускайте Zanzarah обычным способом через Steam.`,'ok');
+ }catch(e){console.error(e);setStatus('<b>Ошибка переключения:</b> '+escapeHtml(e.message),'err')}
+};
+</script>
+</body>
+</html>
