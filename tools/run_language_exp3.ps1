@@ -28,7 +28,6 @@ function Copy-FbsSet([string]$SourceDir, [string]$DestinationDir) {
     }
 }
 
-# First run: preserve the currently installed Steam/English FBS set.
 $enReady = $true
 foreach ($name in $fbsNames) { if (!(Test-Path (Join-Path $EnDir $name))) { $enReady = $false; break } }
 if (!$enReady) {
@@ -36,7 +35,6 @@ if (!$enReady) {
     Copy-FbsSet $DataDir $EnDir
 }
 
-# Optional one-command import of an already extracted Russian FBS directory.
 if (![string]::IsNullOrWhiteSpace($RussianFbsDir)) {
     $RussianFbsDir = (Resolve-Path $RussianFbsDir).Path
     Write-Host "Importing Russian FBS from: $RussianFbsDir"
@@ -73,9 +71,7 @@ Apply-Language $active
 
 $src = @'
 using System;
-using System.Collections.Generic;
 using System.Runtime.InteropServices;
-using System.Text;
 
 public static class ZmsComboBridge {
     public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
@@ -85,6 +81,7 @@ public static class ZmsComboBridge {
     [DllImport("user32.dll")] static extern int GetDlgCtrlID(IntPtr hWnd);
     [DllImport("user32.dll", CharSet=CharSet.Unicode)] static extern IntPtr SendMessage(IntPtr hWnd, uint msg, IntPtr wParam, string lParam);
     [DllImport("user32.dll")] static extern IntPtr SendMessage(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
+    [DllImport("user32.dll")] static extern bool IsWindow(IntPtr hWnd);
 
     const uint CB_ADDSTRING=0x0143, CB_RESETCONTENT=0x014B, CB_SETCURSEL=0x014E, CB_GETCURSEL=0x0147;
 
@@ -103,6 +100,7 @@ public static class ZmsComboBridge {
         },IntPtr.Zero);
         return result;
     }
+    public static bool Valid(IntPtr h) { return h!=IntPtr.Zero && IsWindow(h); }
     public static void Fill(IntPtr combo, int selected) {
         SendMessage(combo,CB_RESETCONTENT,IntPtr.Zero,IntPtr.Zero);
         SendMessage(combo,CB_ADDSTRING,IntPtr.Zero,"English");
@@ -116,30 +114,40 @@ Add-Type -TypeDefinition $src -Language CSharp
 
 Write-Host "Starting: $Exe"
 $p = Start-Process -FilePath $Exe -WorkingDirectory (Split-Path $Exe -Parent) -PassThru
+$selected = if ($active -eq 'ru') { 1 } else { 0 }
+$last = $selected
 $combo = [IntPtr]::Zero
-$deadline = (Get-Date).AddSeconds(30)
-while (!$p.HasExited -and $combo -eq [IntPtr]::Zero -and (Get-Date) -lt $deadline) {
+$connectedOnce = $false
+$hintShown = $false
+
+# DIALOG 125 (Settings) is created lazily by the original launcher. Therefore the
+# language ComboBox does not exist while another tab is active. Keep polling for
+# the whole lifetime of the startup menu and reconnect if the page is destroyed/recreated.
+while (!$p.HasExited) {
     Start-Sleep -Milliseconds 100
     $p.Refresh()
-    $combo = [ZmsComboBridge]::FindControl($p.Id,1711)
-}
-if ($combo -eq [IntPtr]::Zero) {
-    Write-Warning 'Language ComboBox (ID 1711) was not found. Is EXP2 installed?'
-    exit 2
-}
 
-$selected = if ($active -eq 'ru') { 1 } else { 0 }
-[ZmsComboBridge]::Fill($combo,$selected)
-Write-Host 'Language ComboBox connected: English / Russian'
-Write-Host 'For EXP3 the FBS set is switched immediately when the selection changes.'
+    if (![ZmsComboBridge]::Valid($combo)) {
+        $combo = [ZmsComboBridge]::FindControl($p.Id,1711)
+        if ($combo -eq [IntPtr]::Zero) {
+            if (!$hintShown) {
+                Write-Host 'Waiting for Language ComboBox... open the Settings tab in the Zanzarah startup menu.'
+                $hintShown = $true
+            }
+            continue
+        }
 
-$last = $selected
-while (!$p.HasExited) {
-    Start-Sleep -Milliseconds 80
-    $p.Refresh()
-    $currentCombo = [ZmsComboBridge]::FindControl($p.Id,1711)
-    if ($currentCombo -eq [IntPtr]::Zero) { break }
-    $cur = [ZmsComboBridge]::Selection($currentCombo)
+        [ZmsComboBridge]::Fill($combo,$last)
+        if (!$connectedOnce) {
+            Write-Host 'Language ComboBox connected: English / Russian'
+            Write-Host 'EXP3 switches the FBS set immediately when the selection changes.'
+            $connectedOnce = $true
+        } else {
+            Write-Host 'Language ComboBox reconnected.'
+        }
+    }
+
+    $cur = [ZmsComboBridge]::Selection($combo)
     if ($cur -ne $last -and ($cur -eq 0 -or $cur -eq 1)) {
         if ($cur -eq 1) {
             if (Test-FbsSet $RuDir) {
@@ -147,7 +155,7 @@ while (!$p.HasExited) {
                 $last=1
             } else {
                 Write-Warning "Russian pack is not installed in $RuDir"
-                [ZmsComboBridge]::Fill($currentCombo,0)
+                [ZmsComboBridge]::Fill($combo,0)
                 Apply-Language 'en'
                 $last=0
             }
@@ -158,4 +166,7 @@ while (!$p.HasExited) {
     }
 }
 
+if (!$connectedOnce) {
+    Write-Warning 'The Settings tab was never opened, so the Language ComboBox was never created.'
+}
 Write-Host 'Startup dialog closed; EXP3 bridge finished.'
