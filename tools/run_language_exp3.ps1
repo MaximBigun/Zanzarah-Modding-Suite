@@ -1,6 +1,7 @@
 param(
     [Parameter(Mandatory=$false)][string]$Exe = "D:\Steam\steamapps\common\ZanZarah\system\zanthp.exe",
     [Parameter(Mandatory=$false)][string]$GameRoot = "",
+    [Parameter(Mandatory=$false)][string]$Launcher = "",
     [Parameter(Mandatory=$false)][string]$RussianFbsDir = ""
 )
 
@@ -8,6 +9,9 @@ $ErrorActionPreference = 'Stop'
 $Exe = (Resolve-Path $Exe).Path
 if ([string]::IsNullOrWhiteSpace($GameRoot)) { $GameRoot = Split-Path (Split-Path $Exe -Parent) -Parent }
 $GameRoot = (Resolve-Path $GameRoot).Path
+if ([string]::IsNullOrWhiteSpace($Launcher)) { $Launcher = Join-Path $GameRoot 'zanzarah.exe' }
+$Launcher = (Resolve-Path $Launcher).Path
+
 $DataDir = Join-Path $GameRoot 'Data'
 $LocDir = Join-Path $GameRoot 'Localization'
 $EnDir = Join-Path $LocDir 'en'
@@ -59,7 +63,7 @@ using System;
 using System.Text;
 using System.Runtime.InteropServices;
 
-public static class ZmsComboBridgeExp3V3 {
+public static class ZmsComboBridgeExp3V4 {
     public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
     [DllImport("user32.dll")] static extern bool EnumWindows(EnumWindowsProc cb, IntPtr p);
     [DllImport("user32.dll")] static extern bool EnumChildWindows(IntPtr hWnd, EnumWindowsProc cb, IntPtr p);
@@ -105,10 +109,11 @@ public static class ZmsComboBridgeExp3V3 {
     public static int Selection(IntPtr combo){return SendMessage(combo,CB_GETCURSEL,IntPtr.Zero,IntPtr.Zero).ToInt32();}
 }
 '@
-if(-not ('ZmsComboBridgeExp3V3' -as [type])) { Add-Type -TypeDefinition $src -Language CSharp }
+if(-not ('ZmsComboBridgeExp3V4' -as [type])) { Add-Type -TypeDefinition $src -Language CSharp }
 
-Write-Host "Starting: $Exe"
-$launch=Start-Process -FilePath $Exe -WorkingDirectory (Split-Path $Exe -Parent) -PassThru
+Write-Host "Patched game EXE: $Exe"
+Write-Host "Starting launcher: $Launcher"
+$launch=Start-Process -FilePath $Launcher -WorkingDirectory $GameRoot -PassThru
 Write-Host 'Waiting for Zanzarah Startup Menu...'
 
 $selected=if($active -eq 'ru'){1}else{0}; $last=$selected
@@ -117,28 +122,28 @@ $waitUntil=(Get-Date).AddSeconds(60)
 
 while((Get-Date) -lt $waitUntil) {
     Start-Sleep -Milliseconds 100
-    $startup=[ZmsComboBridgeExp3V3]::FindStartupWindow()
+    $startup=[ZmsComboBridgeExp3V4]::FindStartupWindow()
     if($startup -ne [IntPtr]::Zero){ break }
 }
 if($startup -eq [IntPtr]::Zero){ throw 'Startup Menu window was not found within 60 seconds.' }
 Write-Host 'Startup Menu found.'
 
-while([ZmsComboBridgeExp3V3]::Valid($startup)) {
+while([ZmsComboBridgeExp3V4]::Valid($startup)) {
     Start-Sleep -Milliseconds 100
 
-    if(![ZmsComboBridgeExp3V3]::Valid($combo)) {
-        $combo=[ZmsComboBridgeExp3V3]::FindControl($startup,1711)
+    if(![ZmsComboBridgeExp3V4]::Valid($combo)) {
+        $combo=[ZmsComboBridgeExp3V4]::FindControl($startup,1711)
         if($combo -eq [IntPtr]::Zero){ continue }
-        [ZmsComboBridgeExp3V3]::Fill($combo,$last)
+        [ZmsComboBridgeExp3V4]::Fill($combo,$last)
         Write-Host 'Language ComboBox connected: English / Russian'
         $connectedOnce=$true
     }
 
-    $cur=[ZmsComboBridgeExp3V3]::Selection($combo)
+    $cur=[ZmsComboBridgeExp3V4]::Selection($combo)
     if($cur -ne $last -and $cur -in @(0,1)) {
         if($cur -eq 1) {
             if(Test-FbsSet $RuDir){ Apply-Language 'ru'; $last=1 }
-            else { Write-Warning "Russian pack is not installed in $RuDir"; [ZmsComboBridgeExp3V3]::Fill($combo,0); Apply-Language 'en'; $last=0 }
+            else { Write-Warning "Russian pack is not installed in $RuDir"; [ZmsComboBridgeExp3V4]::Fill($combo,0); Apply-Language 'en'; $last=0 }
         } else { Apply-Language 'en'; $last=0 }
     }
 }
